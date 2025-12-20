@@ -1,0 +1,432 @@
+/**
+ * LNChat 核心样式
+ */
+
+:root {
+    --primary-color: #2196F3;
+    --primary-dark: #1976D2;
+    --bg-color: #f5f5f5;
+    --text-color: #333;
+    --text-secondary: #666;
+    --white: #ffffff;
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    --status-bar-height: 24px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Roboto', 'Noto Sans SC', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 壁纸 */
+.wallpaper-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background-size: cover;
+    background-position: center;
+    transition: background-image 1s ease-in-out;
+}
+
+.wallpaper-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0.5));
+}
+
+/* 状态栏 */
+.status-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--status-bar-height);
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    z-index: 1000;
+    font-size: 12px;
+}
+
+/* 主容器 */
+.main-container {
+    position: absolute;
+    top: var(--status-bar-height);
+    left: 0;
+    width: 100%;
+    height: calc(100vh - var(--status-bar-height));
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+}
+
+/* 大时钟 */
+.clock-widget {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.clock-time {
+    font-size: 72px;
+    font-weight: 200;
+    color: var(--text-color);
+}
+
+.clock-date {
+    font-size: 18px;
+    color: var(--text-secondary);
+}
+
+/* 应用网格 */
+.app-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    width: 100%;
+    max-width: 450px;
+    margin-top: 30px;
+}
+
+.app-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.app-item:active {
+    transform: scale(0.9);
+}
+
+.app-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    margin-bottom: 8px;
+    font-size: 30px;
+}
+
+.app-name {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* 应用叠加层 */
+.app-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--white);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+}
+
+.app-header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.back-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+}
+
+.app-content {
+    flex: 1;
+    overflow-y: auto;
+    background: #f9f9f9;
+}
+
+/* 通用列表容器 */
+.list-container {
+    width: 100%;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: var(--white);
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.item .avatar, .mood-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #eee;
+    margin-right: 15px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.item .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.item .info {
+    flex: 1;
+}
+
+.item .name {
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.item .desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* 表单容器 */
+.form-container, .detail-container {
+    padding: 20px;
+}
+
+.avatar-upload {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 2px dashed #ccc;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    font-size: 12px;
+    color: #999;
+}
+
+.avatar-upload img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.input-group input, .input-group textarea, .input-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.save-btn, .cancel-btn, .delete-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.save-btn { background: var(--primary-color); color: white; }
+.cancel-btn { background: #eee; }
+.delete-btn { background: #f44336; color: white; }
+
+/* 聊天 */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-contact-list {
+    width: 100%;
+}
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: var(--white);
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.chat-item .avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #eee;
+    margin-right: 15px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.chat-item .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.chat-item .name {
+    font-weight: 500;
+}
+
+.chat-item .desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 15px;
+    font-size: 15px;
+    position: relative;
+    line-height: 1.4;
+}
+
+.message.user {
+    align-self: flex-end;
+    background: var(--primary-color);
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+.message.assistant {
+    align-self: flex-start;
+    background: white;
+    box-shadow: var(--shadow);
+    border-bottom-left-radius: 2px;
+}
+
+.msg-time {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-top: 5px;
+    text-align: right;
+}
+
+.input-area {
+    padding: 10px;
+    background: white;
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #eee;
+}
+
+#chat-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 10px 15px;
+    height: 40px;
+    resize: none;
+}
+
+#send-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0 20px;
+    border-radius: 20px;
+}
+
+.loading {
+    padding: 20px;
+    text-align: center;
+    color: #999;
+}
+
+/* Toast */
+.ln-toast {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 3000;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.ln-toast.visible {
+    opacity: 1;
+}
+
+/* 响应式 */
+@media (max-width: 400px) {
+    .app-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

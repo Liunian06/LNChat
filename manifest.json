@@ -1,0 +1,21 @@
+{
+  "name": "LNChat",
+  "short_name": "LNChat",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#2196F3",
+  "description": "LNChat - 基于Web的移动端风格 AI 聊天应用",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/192/chat--v1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://img.icons8.com/color/512/chat--v1.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

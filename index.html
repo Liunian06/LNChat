@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2196F3">
+    <title>LNChat</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <!-- 壁纸 -->
+    <div class="wallpaper-container" id="wallpaper">
+        <div class="wallpaper-overlay"></div>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="status-bar">
+        <div class="status-left">
+            <span id="status-time">00:00</span>
+        </div>
+        <div class="status-right">
+            <span id="status-battery">100%</span>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div class="main-container">
+        <div class="clock-widget">
+            <div class="clock-time" id="big-clock">00:00</div>
+            <div class="clock-date" id="big-date">2024年1月1日 星期一</div>
+        </div>
+
+        <div class="app-grid" id="app-grid">
+            <!-- 应用图标将通过 JS 动态生成 -->
+        </div>
+    </div>
+
+    <!-- 应用叠加层 -->
+    <div class="app-overlay" id="app-overlay">
+        <div class="app-header">
+            <div class="back-btn" id="app-back-btn">←</div>
+            <h2 id="app-title">应用名称</h2>
+            <div id="header-actions" style="margin-left: auto;"></div>
+        </div>
+        <div class="app-content" id="app-content">
+            <!-- 应用内容将在这里加载 -->
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+    <script>
+        // 检测是否通过 file:// 协议打开
+        if (window.location.protocol === 'file:') {
+            alert('检测到您正在通过 file:// 协议打开应用。\n\n由于使用了 ES Modules 模块化开发，浏览器出于安全考虑会阻止加载脚本。\n\n请使用 VS Code 的 "Live Server" 扩展打开，或将其部署到 GitHub Pages / Netlify 即可正常使用。');
+            
+            // 降级显示提示信息
+            document.body.insertAdjacentHTML('beforeend', `
+                <div style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:20px; border-radius:10px; box-shadow:0 0 20px rgba(0,0,0,0.2); z-index:9999; text-align:center; max-width:80%">
+                    <h3 style="color:#f44336">⚠️ 无法加载脚本</h3>
+                    <p style="margin:10px 0">模块化 JS 需要通过 HTTP 服务器环境运行。</p>
+                    <p style="font-size:14px; color:#666">建议：右键点击 index.html 选择 "Open with Live Server"</p>
+                </div>
+            `);
+        }
+    </script>
+</body>
+</html>
