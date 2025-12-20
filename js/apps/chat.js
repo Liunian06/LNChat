@@ -23,10 +23,12 @@ async function renderContactList() {
     if (contacts.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <p>请先添加联系人</p>
-                <button onclick="window.lnChat.openApp('contacts')">去添加</button>
+                <div class="empty-icon">💬</div>
+                <p>还没有可以聊天的角色</p>
+                <button id="go-to-contacts">去创建角色</button>
             </div>
         `;
+        document.getElementById('go-to-contacts').onclick = () => window.lnChat.openApp('contacts');
         return;
     }
 

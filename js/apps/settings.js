@@ -29,7 +29,11 @@ async function renderSettings() {
                 </div>
                 <div class="input-group">
                     <label>模型名称</label>
-                    <input type="text" id="api-model" value="${settings.model}">
+                    <div style="display:flex; gap:10px">
+                        <input type="text" id="api-model" value="${settings.model}" style="flex:1">
+                        <button class="save-btn" id="fetch-models-btn" style="width:auto; padding:0 15px; background:var(--glass-bg); border:1px solid var(--glass-border)">拉取列表</button>
+                    </div>
+                    <div id="model-list-container" style="margin-top:10px; max-height:200px; overflow-y:auto; display:none; background:rgba(0,0,0,0.2); border-radius:10px; border:1px solid var(--glass-border)"></div>
                 </div>
                 <div class="input-group">
                     <label>回复延迟 (秒)</label>
@@ -60,6 +64,82 @@ async function renderSettings() {
         };
         await db.put(STORES.SETTINGS, { key: 'ai_settings', ...newSettings });
         showToast('设置已保存');
+    };
+
+    document.getElementById('fetch-models-btn').onclick = async () => {
+        const apiUrl = document.getElementById('api-url').value.trim();
+        const apiKey = document.getElementById('api-key').value.trim();
+        
+        if (!apiUrl || !apiKey) {
+            return showToast('请先填写 API URL 和 API Key');
+        }
+
+        const btn = document.getElementById('fetch-models-btn');
+        const listContainer = document.getElementById('model-list-container');
+        
+        try {
+            btn.disabled = true;
+            btn.textContent = '拉取中...';
+            
+            // 尝试推断 models 接口地址
+            // 通常是把 /chat/completions 替换为 /models
+            let modelsUrl = apiUrl.replace(/\/chat\/completions$/, '/models');
+            if (modelsUrl === apiUrl) {
+                // 如果没匹配到，尝试在末尾处理
+                const urlObj = new URL(apiUrl);
+                urlObj.pathname = urlObj.pathname.split('/').slice(0, -1).join('/') + '/models';
+                modelsUrl = urlObj.toString();
+            }
+
+            const response = await fetch(modelsUrl, {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const data = await response.json();
+            let models = [];
+            
+            if (Array.isArray(data)) {
+                models = data;
+            } else if (data.data && Array.isArray(data.data)) {
+                models = data.data;
+            }
+
+            if (models.length === 0) {
+                showToast('未获取到模型列表');
+                return;
+            }
+
+            // 提取模型 ID 并排序
+            const modelIds = models.map(m => typeof m === 'string' ? m : m.id).sort((a, b) => a.localeCompare(b));
+
+            listContainer.innerHTML = modelIds.map(id => `
+                <div class="model-item" style="padding:10px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px">
+                    ${id}
+                </div>
+            `).join('');
+            
+            listContainer.style.display = 'block';
+            
+            listContainer.querySelectorAll('.model-item').forEach(item => {
+                item.onclick = () => {
+                    document.getElementById('api-model').value = item.textContent.trim();
+                    listContainer.style.display = 'none';
+                };
+            });
+
+            showToast(`成功获取 ${modelIds.length} 个模型`);
+        } catch (err) {
+            console.error('获取模型失败:', err);
+            showToast('获取模型失败: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '拉取列表';
+        }
     };
 
     document.getElementById('export-btn').onclick = exportData;

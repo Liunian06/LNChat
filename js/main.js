@@ -105,15 +105,47 @@ class LNChatSystem {
     }
 
     initBattery() {
+        const batteryText = document.getElementById('status-battery');
+        const batteryLevel = document.getElementById('battery-level');
+
+        const updateUI = (level) => {
+            const percentage = Math.round(level * 100);
+            batteryText.textContent = `${percentage}%`;
+            batteryLevel.style.width = `${percentage}%`;
+            
+            if (percentage <= 20) {
+                batteryLevel.classList.add('low');
+            } else {
+                batteryLevel.classList.remove('low');
+            }
+        };
+
         if ('getBattery' in navigator) {
             navigator.getBattery().then(battery => {
-                const update = () => {
-                    document.getElementById('status-battery').textContent = `${Math.round(battery.level * 100)}%`;
-                };
+                const update = () => updateUI(battery.level);
                 update();
                 battery.onlevelchange = update;
+            }).catch(() => {
+                // Fallback if getBattery fails
+                this.simulateBattery(updateUI);
             });
+        } else {
+            // Fallback if getBattery is not supported
+            this.simulateBattery(updateUI);
         }
+    }
+
+    simulateBattery(callback) {
+        // 模拟电量：从 95% 开始，每分钟减少一点，或者只是保持一个合理的值
+        let level = 0.95;
+        callback(level);
+        
+        // 每 30 秒模拟一次微小的电量变化，让用户看到“实时变化”
+        setInterval(() => {
+            level -= 0.001;
+            if (level < 0.05) level = 0.95; // 循环模拟
+            callback(level);
+        }, 30000);
     }
 
     async initWallpaper() {
