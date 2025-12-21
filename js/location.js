@@ -8,14 +8,20 @@ import { db, STORES } from './db.js';
 // 定位API配置，按优先级排序
 const LOCATION_APIS = [
     {
-        name: 'ipapi.co',
-        url: 'https://ipapi.co/json/',
+        name: 'geojs.io',
+        url: 'https://get.geojs.io/v1/ip/geo.json',
         parseResponse: (data) => data.city,
         enabled: true
     },
     {
-        name: 'ip-api.com',
-        url: 'http://ip-api.com/json/',
+        name: 'ipwho.is',
+        url: 'https://ipwho.is/',
+        parseResponse: (data) => data.city,
+        enabled: true
+    },
+    {
+        name: 'ipapi.co',
+        url: 'https://ipapi.co/json/',
         parseResponse: (data) => data.city,
         enabled: true
     },
@@ -24,30 +30,6 @@ const LOCATION_APIS = [
         url: 'https://ipinfo.io/json',
         parseResponse: (data) => data.city,
         enabled: true
-    },
-    {
-        name: 'myip.ipip.net',
-        url: 'https://myip.ipip.net/',
-        parseResponse: (text) => {
-            // 返回格式: 当前 IP：218.17.40.74  来自于：中国 广东 深圳  电信
-            const locationText = text.split('来自于：')[1];
-            if (!locationText) return null;
-            
-            // 分割并过滤空字符串
-            let parts = locationText.trim().split(/\s+/);
-            
-            // 过滤掉 "中国"
-            parts = parts.filter(p => p !== '中国');
-            
-            // 过滤掉常见的运营商关键词
-            const ispKeywords = ['电信', '联通', '移动', '铁通', '教育网', '鹏博士', '广电', '宽带', 'ADSL'];
-            parts = parts.filter(p => !ispKeywords.some(k => p.includes(k)));
-            
-            // 取最后一个剩余的部分作为城市
-            return parts.length > 0 ? parts[parts.length - 1] : null;
-        },
-        enabled: true,
-        isTextResponse: true
     },
     {
         name: 'geolocation-db.com',
