@@ -3,14 +3,16 @@
  */
 
 const DB_NAME = 'LNChatDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 
 export const STORES = {
     CONTACTS: 'contacts',
     CHAT_HISTORY: 'chat_history',
     DIARIES: 'diaries',
     SETTINGS: 'settings',
-    IMAGES: 'images'
+    IMAGES: 'images',
+    SESSIONS: 'sessions',
+    LOGS: 'logs'
 };
 
 class LNChatDB {
@@ -26,6 +28,7 @@ class LNChatDB {
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
+                const oldVersion = event.oldVersion;
 
                 // 联系人存储
                 if (!db.objectStoreNames.contains(STORES.CONTACTS)) {
@@ -36,6 +39,12 @@ class LNChatDB {
                 if (!db.objectStoreNames.contains(STORES.CHAT_HISTORY)) {
                     const chatStore = db.createObjectStore(STORES.CHAT_HISTORY, { keyPath: 'id', autoIncrement: true });
                     chatStore.createIndex('contactId', 'contactId', { unique: false });
+                    chatStore.createIndex('chatId', 'chatId', { unique: false });
+                } else {
+                    const chatStore = event.target.transaction.objectStore(STORES.CHAT_HISTORY);
+                    if (!chatStore.indexNames.contains('chatId')) {
+                        chatStore.createIndex('chatId', 'chatId', { unique: false });
+                    }
                 }
 
                 // 日记存储
@@ -51,6 +60,19 @@ class LNChatDB {
                 // 图片存储 (Blob/Base64)
                 if (!db.objectStoreNames.contains(STORES.IMAGES)) {
                     db.createObjectStore(STORES.IMAGES, { keyPath: 'id' });
+                }
+
+                // 会话存储
+                if (!db.objectStoreNames.contains(STORES.SESSIONS)) {
+                    const sessionStore = db.createObjectStore(STORES.SESSIONS, { keyPath: 'id' });
+                    sessionStore.createIndex('contactId', 'contactId', { unique: false });
+                }
+
+                // 日志存储
+                if (!db.objectStoreNames.contains(STORES.LOGS)) {
+                    const logStore = db.createObjectStore(STORES.LOGS, { keyPath: 'id', autoIncrement: true });
+                    logStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    logStore.createIndex('type', 'type', { unique: false });
                 }
             };
 
@@ -126,12 +148,32 @@ class LNChatDB {
         });
     }
 
-    // 特殊查询：根据联系人ID获取聊天记录
-    async getChatHistory(contactId) {
+    // 特殊查询：根据会话ID获取聊天记录
+    async getChatHistory(chatId, onlyNormal = false) {
         await this.init();
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(STORES.CHAT_HISTORY, 'readonly');
             const store = transaction.objectStore(STORES.CHAT_HISTORY);
+            const index = store.index('chatId');
+            const request = index.getAll(chatId);
+
+            request.onsuccess = () => {
+                let history = request.result;
+                if (onlyNormal) {
+                    history = history.filter(m => m.status === 'normal');
+                }
+                resolve(history);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    // 特殊查询：根据联系人ID获取所有会话
+    async getSessionsByContact(contactId) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(STORES.SESSIONS, 'readonly');
+            const store = transaction.objectStore(STORES.SESSIONS);
             const index = store.index('contactId');
             const request = index.getAll(contactId);
 
