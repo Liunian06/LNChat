@@ -795,6 +795,22 @@ input[type=range]::-webkit-slider-thumb {
     font-size: 12px;
 }
 
+.memory-item.selected {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.memory-item.selected .custom-checkbox {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.memory-item.selected .custom-checkbox::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+}
+
 .bottom-action-bar {
     position: absolute;
     bottom: 0;

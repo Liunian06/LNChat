@@ -398,9 +398,9 @@ async function renderPromptSettings() {
     // 确保默认值
     if (settings.includeDate === undefined) settings.includeDate = true;
     if (settings.includeTime === undefined) settings.includeTime = true;
-    if (settings.includeLocation === undefined) settings.includeLocation = true;
-    if (settings.includeWeather === undefined) settings.includeWeather = true;
-    if (settings.includeForecast === undefined) settings.includeForecast = true;
+    if (settings.includeLocation === undefined) settings.includeLocation = false;
+    if (settings.includeWeather === undefined) settings.includeWeather = false;
+    if (settings.includeForecast === undefined) settings.includeForecast = false;
     if (settings.forecastDays === undefined) settings.forecastDays = 3;
     if (settings.includeBattery === undefined) settings.includeBattery = true;
 
@@ -438,12 +438,21 @@ async function renderPromptSettings() {
                     </div>
                     
                     <div id="location-preview-area" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; display:${settings.includeLocation ? 'block' : 'none'};">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                             <div style="font-size:12px; color:var(--text-secondary);">
                                 <div>当前定位: <span id="location-val">${settings.locationData?.city || '未知'}</span></div>
                                 <div style="font-size:10px; opacity:0.7; margin-top:2px;">更新时间: <span id="location-time">${settings.locationData ? getCurrentTimestamp(new Date(settings.locationData.timestamp)) : '-'}</span></div>
                             </div>
                             <button id="test-location-btn" style="font-size:12px; padding:4px 8px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:4px; color:white; cursor:pointer;">刷新/测试</button>
+                        </div>
+                        
+                        <div style="margin-top:10px;">
+                            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">手动输入城市:</div>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="manual-location-input" placeholder="例如: 北京、上海" value="${settings.manualLocation || ''}" style="flex:1; padding:6px 10px; border-radius:6px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.08); color:white; font-size:12px;">
+                                <button id="save-manual-location-btn" style="font-size:12px; padding:4px 10px; background:var(--primary-color); border:1px solid var(--glass-border); border-radius:4px; color:white; cursor:pointer;">保存</button>
+                            </div>
+                            <div style="font-size:10px; color:var(--text-secondary); margin-top:5px; opacity:0.7;">提示: 手动输入将覆盖自动定位，适用于定位不准确的情况</div>
                         </div>
                     </div>
 
@@ -530,6 +539,33 @@ async function renderPromptSettings() {
         }
     };
 
+    // 手动输入城市保存按钮事件
+    document.getElementById('save-manual-location-btn').onclick = async () => {
+        const input = document.getElementById('manual-location-input');
+        const city = input.value.trim();
+        
+        if (!city) {
+            showToast('请输入城市名称');
+            return;
+        }
+        
+        // 更新设置中的手动定位
+        settings.manualLocation = city;
+        settings.locationData = {
+            city: city,
+            timestamp: Date.now(),
+            isManual: true
+        };
+        
+        await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+        
+        // 更新显示
+        document.getElementById('location-val').textContent = city;
+        document.getElementById('location-time').textContent = getCurrentTimestamp();
+        
+        showToast(`已手动设置城市为: ${city}`);
+    };
+
     document.getElementById('include-weather').onchange = (e) => {
         document.getElementById('weather-preview-area').style.display = e.target.checked ? 'block' : 'none';
     };
@@ -607,6 +643,9 @@ async function renderPromptSettings() {
             return;
         }
         
+        // 获取手动输入的城市
+        const manualLocation = document.getElementById('manual-location-input').value.trim();
+        
         const newSettings = {
             ...settings,
             // systemPrompt: document.getElementById('system-prompt').value.trim(), // 已移除自定义编辑
@@ -617,8 +656,19 @@ async function renderPromptSettings() {
             includeWeather: document.getElementById('include-weather').checked,
             includeForecast: document.getElementById('include-forecast').checked,
             forecastDays: parseInt(document.getElementById('forecast-days').value) || 3,
-            includeBattery: document.getElementById('include-battery').checked
+            includeBattery: document.getElementById('include-battery').checked,
+            manualLocation: manualLocation
         };
+        
+        // 如果手动输入了城市且与当前不同，更新位置数据
+        if (manualLocation && manualLocation !== settings.manualLocation) {
+            newSettings.locationData = {
+                city: manualLocation,
+                timestamp: Date.now(),
+                isManual: true
+            };
+        }
+        
         await db.put(STORES.SETTINGS, { key: 'ai_settings', ...newSettings });
         await Logger.log(LOG_TYPES.SETTING, `Updated prompt settings. Context count: ${contextCount}`);
         showToast('设置已保存');
@@ -1193,7 +1243,15 @@ async function getSettings() {
         contextCount: 2000,
         devMode: true,
         logRetention: 7,
-        bingWallpaper: true
+        bingWallpaper: true,
+        includeDate: true,
+        includeTime: true,
+        includeLocation: false,
+        includeWeather: false,
+        includeForecast: false,
+        forecastDays: 3,
+        includeBattery: true,
+        manualLocation: ''
     };
 
     if (!s) return defaultSettings;
@@ -1215,12 +1273,28 @@ async function getSettings() {
             contextCount: s.contextCount || 2000,
             devMode: s.devMode !== undefined ? s.devMode : true,
             logRetention: s.logRetention || 7,
-            bingWallpaper: true
+            bingWallpaper: true,
+            includeDate: s.includeDate !== undefined ? s.includeDate : true,
+            includeTime: s.includeTime !== undefined ? s.includeTime : true,
+            includeLocation: s.includeLocation !== undefined ? s.includeLocation : false,
+            includeWeather: s.includeWeather !== undefined ? s.includeWeather : false,
+            includeForecast: s.includeForecast !== undefined ? s.includeForecast : false,
+            forecastDays: s.forecastDays || 3,
+            includeBattery: s.includeBattery !== undefined ? s.includeBattery : true,
+            manualLocation: s.manualLocation || ''
         };
     }
 
     // 确保新字段存在
     if (s.bingWallpaper === undefined) s.bingWallpaper = true;
+    if (s.includeDate === undefined) s.includeDate = true;
+    if (s.includeTime === undefined) s.includeTime = true;
+    if (s.includeLocation === undefined) s.includeLocation = false;
+    if (s.includeWeather === undefined) s.includeWeather = false;
+    if (s.includeForecast === undefined) s.includeForecast = false;
+    if (s.forecastDays === undefined) s.forecastDays = 3;
+    if (s.includeBattery === undefined) s.includeBattery = true;
+    if (s.manualLocation === undefined) s.manualLocation = '';
     
     // 气泡设置默认值
     if (!s.bubbleSettings) {

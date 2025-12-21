@@ -474,11 +474,23 @@ async function processAIResponse(session, contact) {
         systemContent += `\n\n\n以下是角色人设：\n角色名：${contact.name}\n角色人设：\n${contact.description || '无'}`;
 
         // 用户人设
+        let userName = '用户';
         if (session.userPersonaId) {
             const userPersona = await db.get(STORES.USER_PERSONAS, session.userPersonaId);
             if (userPersona) {
-                 systemContent += `\n\n\n以下是用户人设：\n用户名：${userPersona.name || '用户'}\n用户人设：\n${userPersona.description || '无'}`;
+                 userName = userPersona.name || '用户';
+                 systemContent += `\n\n\n以下是用户人设：\n用户名：${userName}\n用户人设：\n${userPersona.description || '无'}`;
             }
+        }
+
+        // 记忆板块
+        const allMemories = await db.getAll(STORES.MEMORIES);
+        const contactMemories = allMemories.filter(m => m.contactId === contact.id);
+        if (contactMemories.length > 0) {
+            systemContent += `\n\n\n以下是${contact.name}和${userName}的记忆：\n`;
+            contactMemories.forEach(m => {
+                systemContent += `- ${m.content}\n`;
+            });
         }
 
         // 系统信息
