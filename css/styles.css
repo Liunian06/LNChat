@@ -18,21 +18,24 @@
     --glass-border: rgba(255, 255, 255, 0.2);
     --glass-blur: 25px;
 
-    /* 气泡样式变量 (默认值) */
-    --user-msg-bg: var(--primary-color);
+    /* 气泡样式变量 (默认值 - 可爱风) */
+    --user-msg-bg: linear-gradient(135deg, #FFB6D9 0%, #FF8EC7 100%);
     --user-msg-text: #ffffff;
-    --user-msg-radius: 20px;
+    --user-msg-radius: 24px;
     
-    --ai-msg-bg: rgba(255, 255, 255, 0.12);
+    --ai-msg-bg: rgba(230, 240, 255, 0.15);
     --ai-msg-text: #ffffff;
-    --ai-msg-radius: 20px;
+    --ai-msg-radius: 24px;
+    
+    /* 自定义字体变量 */
+    --custom-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", "Noto Sans SC", sans-serif;
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", "Noto Sans SC", sans-serif;
+    font-family: var(--custom-font);
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -42,6 +45,7 @@ body {
     height: 100vh;
     overflow: hidden;
     position: relative;
+    font-family: var(--custom-font);
 }
 
 /* 壁纸 */
@@ -63,7 +67,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.35); /* 稍微加深遮罩增强质感 */
+    background: rgba(0, 0, 0, 0.15); /* 降低遮罩透明度，让壁纸更明亮 */
 }
 
 /* 状态栏 */

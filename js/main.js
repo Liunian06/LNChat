@@ -47,17 +47,58 @@ class LNChatSystem {
         // 初始化气泡样式
         this.initBubbleStyles();
         
+        // 初始化壁纸遮罩透明度
+        this.initWallpaperOverlay();
+        
+        // 初始化自定义字体
+        this.initCustomFont();
+        
         // 绑定返回按钮
         this.backBtn.onclick = () => this.closeApp();
     }
 
-    renderAppGrid() {
-        this.appGrid.innerHTML = APPS.map(app => `
-            <div class="app-item" data-id="${app.id}">
-                <div class="app-icon">${app.icon}</div>
-                <div class="app-name">${app.name}</div>
-            </div>
-        `).join('');
+    async renderAppGrid() {
+        // 获取自定义图标配置
+        let customIcons = {};
+        try {
+            const settings = await db.get(STORES.SETTINGS, 'ai_settings');
+            customIcons = settings?.customAppIcons || {};
+        } catch (e) {
+            console.error('加载自定义图标配置失败', e);
+        }
+
+        // 为每个应用生成HTML
+        const appsHtml = await Promise.all(APPS.map(async (app) => {
+            let iconHtml = app.icon;
+            
+            // 检查是否有自定义图标
+            if (customIcons[app.id]) {
+                const iconData = customIcons[app.id];
+                if (iconData.type === 'upload') {
+                    // 从IndexedDB加载图片
+                    try {
+                        const imgData = await db.get(STORES.IMAGES, `app_icon_${app.id}`);
+                        if (imgData && imgData.blob) {
+                            const url = URL.createObjectURL(imgData.blob);
+                            iconHtml = `<img src="${url}" style="width:100%; height:100%; object-fit:cover; border-radius:18px;">`;
+                        }
+                    } catch (e) {
+                        console.error(`加载 ${app.id} 图标失败`, e);
+                    }
+                } else if (iconData.type === 'url' && iconData.url) {
+                    iconHtml = `<img src="${iconData.url}" style="width:100%; height:100%; object-fit:cover; border-radius:18px;">`;
+                }
+            }
+            
+            return `
+                <div class="app-item" data-id="${app.id}">
+                    <div class="app-icon">${iconHtml}</div>
+                    <div class="app-name">${app.name}</div>
+                </div>
+            `;
+        }));
+
+        this.appGrid.innerHTML = appsHtml.join('');
 
         this.appGrid.querySelectorAll('.app-item').forEach(item => {
             item.onclick = () => this.openApp(item.dataset.id);
@@ -242,6 +283,71 @@ class LNChatSystem {
         } catch (e) {
             console.error('加载气泡样式失败', e);
         }
+    }
+    
+    async initWallpaperOverlay() {
+        try {
+            const settings = await db.get(STORES.SETTINGS, 'ai_settings');
+            if (settings && settings.wallpaperOverlay !== undefined) {
+                const overlay = document.querySelector('.wallpaper-overlay');
+                if (overlay) {
+                    overlay.style.background = `rgba(0, 0, 0, ${settings.wallpaperOverlay})`;
+                }
+            }
+        } catch (e) {
+            console.error('加载壁纸遮罩设置失败', e);
+        }
+    }
+    
+    async initCustomFont() {
+        try {
+            const settings = await db.get(STORES.SETTINGS, 'ai_settings');
+            if (settings && settings.customFont) {
+                const { name, type } = settings.customFont;
+                
+                if (type === 'upload') {
+                    // 从IndexedDB加载字体文件
+                    const fontData = await db.get(STORES.IMAGES, 'custom_font');
+                    if (fontData && fontData.blob) {
+                        await this.loadFont(name, fontData.blob);
+                        this.applyFontGlobally(name);
+                    }
+                } else if (type === 'url' && settings.customFont.url) {
+                    // 从URL加载字体
+                    await this.loadFont(name, settings.customFont.url);
+                    this.applyFontGlobally(name);
+                }
+            }
+        } catch (e) {
+            console.error('加载自定义字体失败', e);
+        }
+    }
+    
+    async loadFont(fontName, source) {
+        try {
+            let fontUrl;
+            
+            if (source instanceof Blob) {
+                fontUrl = URL.createObjectURL(source);
+            } else {
+                fontUrl = source; // 直接使用URL
+            }
+            
+            // 创建 @font-face 规则
+            const fontFace = new FontFace(fontName, `url(${fontUrl})`);
+            await fontFace.load();
+            document.fonts.add(fontFace);
+            
+            return true;
+        } catch (e) {
+            console.error('字体加载失败:', e);
+            return false;
+        }
+    }
+    
+    applyFontGlobally(fontName) {
+        document.documentElement.style.setProperty('--custom-font', `"${fontName}", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`);
+        document.body.style.fontFamily = `"${fontName}", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
     }
 }
 

@@ -702,6 +702,12 @@ async function renderAppearanceSettings() {
                     </label>
                 </div>
                 <p style="font-size:12px; color:var(--text-secondary); margin-bottom:20px">自动获取 Bing 每日美图作为背景。</p>
+                
+                <div class="input-group">
+                    <label id="wallpaper-overlay-label">壁纸遮罩透明度 (当前: ${settings.wallpaperOverlay !== undefined ? Math.round(settings.wallpaperOverlay * 100) : 15}%)</label>
+                    <input type="range" id="wallpaper-overlay" min="0" max="100" value="${settings.wallpaperOverlay !== undefined ? Math.round(settings.wallpaperOverlay * 100) : 15}" style="width:100%;">
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:8px">调整壁纸上的黑色遮罩透明度。0% = 完全透明（最亮），100% = 完全不透明（最暗）。</p>
+                </div>
 
                 <div id="custom-wallpaper-section" style="display: ${settings.bingWallpaper ? 'none' : 'block'}">
                     <h3 style="font-size:16px; margin-bottom:15px; color:var(--primary-color)">自定义壁纸</h3>
@@ -716,6 +722,17 @@ async function renderAppearanceSettings() {
                     
                     <p style="font-size:12px; color:var(--text-secondary);">建议上传 16:9 或 9:16 的高清图片。</p>
                 </div>
+            </section>
+
+            <section style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--glass-border);">
+                <h3 style="font-size:16px; margin-bottom:20px; color:var(--primary-color)">应用图标自定义</h3>
+                <p style="font-size:12px; color:var(--text-secondary); margin-bottom:15px">为每个应用上传自定义图标，支持本地上传或在线图床链接。图片需为 1:1 正方形比例。</p>
+                
+                <div id="app-icons-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:15px; margin-bottom:20px;">
+                    <!-- 应用图标列表将在这里动态生成 -->
+                </div>
+                
+                <button class="save-btn" id="reset-all-icons-btn" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); width:100%;">重置所有图标为默认</button>
             </section>
 
             <section style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--glass-border);">
@@ -780,6 +797,48 @@ async function renderAppearanceSettings() {
                     <div style="margin-top:15px;">
                         <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">在此输入 CSS 属性，将直接应用到气泡元素。此设置优先级高于上方可视化设置。</p>
                         
+                        <!-- 使用说明和示例 -->
+                        <details style="margin-bottom:15px; padding:12px; background:rgba(76,175,80,0.1); border-radius:10px; border:1px solid rgba(76,175,80,0.3);">
+                            <summary style="cursor:pointer; font-size:13px; color:#4CAF50; font-weight:500; user-select:none;">💡 使用说明与常用效果示例</summary>
+                            <div style="margin-top:12px; font-size:12px; color:var(--text-secondary); line-height:1.6;">
+                                <p style="margin-bottom:10px;"><strong>📝 输入格式：</strong></p>
+                                <ul style="margin:0 0 10px 20px; padding:0;">
+                                    <li>直接输入 CSS 属性，每行一个属性或用分号分隔</li>
+                                    <li>无需添加选择器（如 .message），仅写属性即可</li>
+                                    <li>支持所有标准 CSS 属性</li>
+                                </ul>
+                                
+                                <p style="margin-bottom:10px;"><strong>✨ 常用效果示例：</strong></p>
+                                <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; font-family:monospace; font-size:11px; margin-bottom:8px;">
+                                    <div style="opacity:0.7; margin-bottom:4px;">/* 渐变背景 */</div>
+                                    background: linear-gradient(45deg, #ff0000, #0000ff);<br>
+                                    border: 2px solid white;
+                                </div>
+                                <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; font-family:monospace; font-size:11px; margin-bottom:8px;">
+                                    <div style="opacity:0.7; margin-bottom:4px;">/* 发光效果 */</div>
+                                    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+                                </div>
+                                <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; font-family:monospace; font-size:11px; margin-bottom:8px;">
+                                    <div style="opacity:0.7; margin-bottom:4px;">/* 毛玻璃效果 */</div>
+                                    background: rgba(255,255,255,0.1);<br>
+                                    backdrop-filter: blur(10px);<br>
+                                    border: 1px solid rgba(255,255,255,0.2);
+                                </div>
+                                <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; font-family:monospace; font-size:11px; margin-bottom:8px;">
+                                    <div style="opacity:0.7; margin-bottom:4px;">/* 斜体 + 半透明 */</div>
+                                    font-style: italic;<br>
+                                    opacity: 0.8;
+                                </div>
+                                
+                                <p style="margin:10px 0;"><strong>⚠️ 注意事项：</strong></p>
+                                <ul style="margin:0 0 0 20px; padding:0;">
+                                    <li>修改后自动保存，实时生效</li>
+                                    <li>如遇显示问题，请清空输入框恢复默认</li>
+                                    <li>建议先在一个元素上测试效果</li>
+                                </ul>
+                            </div>
+                        </details>
+                        
                         <div class="input-group">
                             <label>用户气泡 (.message.user)</label>
                             <textarea id="user-custom-css" placeholder="例如: background: linear-gradient(45deg, #ff0000, #0000ff); border: 2px solid white;" style="height:80px; font-family:monospace; font-size:12px;"></textarea>
@@ -805,6 +864,38 @@ async function renderAppearanceSettings() {
                             <textarea id="state-custom-css" placeholder="例如: background: rgba(0,0,0,0.5); border-radius: 10px;" style="height:80px; font-family:monospace; font-size:12px;"></textarea>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--glass-border);">
+                <h3 style="font-size:16px; margin-bottom:20px; color:var(--primary-color);">自定义字体</h3>
+                <p style="font-size:12px; color:var(--text-secondary); margin-bottom:15px">上传 TTF 字体文件或使用在线字体 URL，应用到所有文字。</p>
+                
+                <div id="font-preview" style="padding:20px; background:rgba(255,255,255,0.05); border-radius:12px; border:1px solid var(--glass-border); margin-bottom:20px; text-align:center;">
+                    <div style="font-size:24px; margin-bottom:10px; line-height:1.5;">预览文字 Preview Text</div>
+                    <div style="font-size:16px; color:var(--text-secondary);">你好世界 Hello World 123</div>
+                    <div style="font-size:14px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">The quick brown fox jumps over the lazy dog</div>
+                </div>
+
+                <div class="input-group">
+                    <label>字体名称</label>
+                    <input type="text" id="custom-font-name" placeholder="例如: MyCustomFont" value="${settings.customFont?.name || ''}">
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:5px;">为字体设置一个唯一名称，方便识别</p>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <button class="save-btn" id="upload-font-btn" style="flex:1; background:var(--glass-bg); border:1px solid var(--glass-border);">📁 上传 TTF 字体</button>
+                    <button class="save-btn" id="url-font-btn" style="flex:1; background:var(--glass-bg); border:1px solid var(--glass-border);">🔗 使用在线 URL</button>
+                </div>
+                <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none;">
+
+                <div id="font-status" style="padding:12px; background:rgba(76,175,80,0.1); border-radius:8px; border:1px solid rgba(76,175,80,0.3); display:none; margin-bottom:15px;">
+                    <div style="font-size:13px; color:#4CAF50;">✓ <span id="font-status-text">字体已加载</span></div>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <button class="save-btn" id="apply-font-btn" style="flex:1; background:var(--primary-color);">应用字体</button>
+                    <button class="save-btn" id="reset-font-btn" style="width:auto; padding:0 20px; background:rgba(255,255,255,0.1); border:1px solid var(--glass-border);">重置</button>
                 </div>
             </section>
         </div>
@@ -871,12 +962,536 @@ async function renderAppearanceSettings() {
             showToast('保存壁纸失败');
         }
     };
+    
+    // --- 壁纸遮罩透明度控制 ---
+    const overlaySlider = document.getElementById('wallpaper-overlay');
+    const overlayLabel = document.getElementById('wallpaper-overlay-label');
+    const wallpaperOverlay = document.querySelector('.wallpaper-overlay');
+    
+    // 应用当前设置的透明度
+    if (settings.wallpaperOverlay !== undefined) {
+        if (wallpaperOverlay) {
+            wallpaperOverlay.style.background = `rgba(0, 0, 0, ${settings.wallpaperOverlay})`;
+        }
+    }
+    
+    // 实时预览和保存
+    overlaySlider.oninput = (e) => {
+        const opacity = e.target.value / 100;
+        const percentage = e.target.value;
+        
+        // 更新标签显示
+        overlayLabel.textContent = `壁纸遮罩透明度 (当前: ${percentage}%)`;
+        
+        // 实时预览
+        if (wallpaperOverlay) {
+            wallpaperOverlay.style.background = `rgba(0, 0, 0, ${opacity})`;
+        }
+    };
+    
+    overlaySlider.onchange = async (e) => {
+        const opacity = e.target.value / 100;
+        settings.wallpaperOverlay = opacity;
+        await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+        showToast(`壁纸遮罩已设置为 ${Math.round(opacity * 100)}%`);
+    };
+
+    // --- 应用图标自定义逻辑 ---
+    const APPS = [
+        { id: 'chat', name: '聊天', icon: '💬' },
+        { id: 'contacts', name: '联系人', icon: '👥' },
+        { id: 'diary', name: '日记', icon: '📔' },
+        { id: 'moments', name: '朋友圈', icon: '🌟' },
+        { id: 'memory', name: '记忆', icon: '🧠' },
+        { id: 'wallet', name: '钱包', icon: '💳' },
+        { id: 'store', name: '商城', icon: '🛒' },
+        { id: 'settings', name: '设置', icon: '⚙️' }
+    ];
+
+    const appIconsGrid = document.getElementById('app-icons-grid');
+    const customIcons = settings.customAppIcons || {};
+
+    // 渲染应用图标列表
+    const renderAppIconsList = async () => {
+        const iconsHtml = await Promise.all(APPS.map(async (app) => {
+            let iconDisplay = app.icon;
+            let isCustom = false;
+            
+            // 检查是否有自定义图标
+            if (customIcons[app.id]) {
+                const iconData = customIcons[app.id];
+                if (iconData.type === 'upload') {
+                    // 从IndexedDB加载图片
+                    const imgData = await db.get(STORES.IMAGES, `app_icon_${app.id}`);
+                    if (imgData && imgData.blob) {
+                        const url = URL.createObjectURL(imgData.blob);
+                        iconDisplay = `<img src="${url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
+                        isCustom = true;
+                    }
+                } else if (iconData.type === 'url' && iconData.url) {
+                    iconDisplay = `<img src="${iconData.url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
+                    isCustom = true;
+                }
+            }
+            
+            return `
+                <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; border:1px solid var(--glass-border);">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+                        <div style="width:48px; height:48px; background:var(--glass-bg); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:28px; overflow:hidden;">
+                            ${iconDisplay}
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-size:15px; font-weight:500; color:white;">${app.name}</div>
+                            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">${isCustom ? '已自定义' : '默认图标'}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="upload-icon-btn" data-app-id="${app.id}" style="flex:1; padding:8px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:8px; color:white; font-size:12px; cursor:pointer;">📁 上传</button>
+                        <button class="url-icon-btn" data-app-id="${app.id}" style="flex:1; padding:8px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:8px; color:white; font-size:12px; cursor:pointer;">🔗 URL</button>
+                        ${isCustom ? `<button class="reset-icon-btn" data-app-id="${app.id}" style="padding:8px 12px; background:rgba(244,67,54,0.2); border:1px solid var(--glass-border); border-radius:8px; color:#ff5252; font-size:12px; cursor:pointer;">🔄</button>` : ''}
+                    </div>
+                    <input type="file" class="icon-file-input" data-app-id="${app.id}" accept="image/*" style="display:none;">
+                </div>
+            `;
+        }));
+        
+        appIconsGrid.innerHTML = iconsHtml.join('');
+        
+        // 绑定事件
+        appIconsGrid.querySelectorAll('.upload-icon-btn').forEach(btn => {
+            btn.onclick = () => {
+                const appId = btn.dataset.appId;
+                const fileInput = appIconsGrid.querySelector(`input[data-app-id="${appId}"]`);
+                fileInput.click();
+            };
+        });
+        
+        appIconsGrid.querySelectorAll('.icon-file-input').forEach(input => {
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const appId = input.dataset.appId;
+                await handleIconUpload(appId, file);
+            };
+        });
+        
+        appIconsGrid.querySelectorAll('.url-icon-btn').forEach(btn => {
+            btn.onclick = async () => {
+                const appId = btn.dataset.appId;
+                const app = APPS.find(a => a.id === appId);
+                const url = prompt(`请输入 ${app.name} 图标的图片链接 (需为正方形 1:1 比例):`);
+                
+                if (url && url.trim()) {
+                    await handleIconUrl(appId, url.trim());
+                }
+            };
+        });
+        
+        appIconsGrid.querySelectorAll('.reset-icon-btn').forEach(btn => {
+            btn.onclick = async () => {
+                const appId = btn.dataset.appId;
+                await resetAppIcon(appId);
+            };
+        });
+    };
+    
+    // 处理图标上传
+    const handleIconUpload = async (appId, file) => {
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('图片大小不能超过 2MB');
+            return;
+        }
+        
+        // 检查图片比例
+        const img = new Image();
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            img.onload = async () => {
+                const ratio = img.width / img.height;
+                
+                // 允许一定误差范围 (0.95 - 1.05)
+                if (ratio < 0.95 || ratio > 1.05) {
+                    showToast(`图片比例为 ${img.width}x${img.height}，需要裁切为 1:1 正方形`);
+                    // 打开裁切界面
+                    await openCropDialog(appId, e.target.result, img.width, img.height);
+                } else {
+                    // 直接保存
+                    await saveAppIcon(appId, file, 'upload');
+                }
+            };
+            img.src = e.target.result;
+        };
+        
+        reader.readAsDataURL(file);
+    };
+    
+    // 处理图标URL
+    const handleIconUrl = async (appId, url) => {
+        const app = APPS.find(a => a.id === appId);
+        
+        // 测试加载图片
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = async () => {
+            const ratio = img.width / img.height;
+            
+            if (ratio < 0.95 || ratio > 1.05) {
+                showToast(`图片比例为 ${img.width}x${img.height}，不是 1:1 正方形，请使用其他图片或上传后裁切`);
+            } else {
+                // 保存URL
+                if (!customIcons[appId]) customIcons[appId] = {};
+                customIcons[appId].type = 'url';
+                customIcons[appId].url = url;
+                
+                settings.customAppIcons = customIcons;
+                await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+                
+                showToast(`${app.name} 图标已更新`);
+                await renderAppIconsList();
+                
+                // 刷新主界面图标
+                if (window.lnChat && window.lnChat.renderAppGrid) {
+                    window.lnChat.renderAppGrid();
+                }
+            }
+        };
+        
+        img.onerror = () => {
+            showToast('图片加载失败，请检查链接是否有效');
+        };
+        
+        img.src = url;
+    };
+    
+    // 打开裁切对话框（支持拖动和缩放）
+    const openCropDialog = async (appId, imageSrc, width, height) => {
+        const app = APPS.find(a => a.id === appId);
+        
+        // 创建裁切界面
+        const cropDialog = document.createElement('div');
+        cropDialog.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;';
+        
+        const cropSize = 300; // 裁切框大小
+        
+        cropDialog.innerHTML = `
+            <h3 style="color:white; margin-bottom:10px;">裁切 ${app.name} 图标为正方形</h3>
+            <p style="color:var(--text-secondary); font-size:12px; margin-bottom:15px;">拖动图片调整位置，使用滚轮或按钮缩放</p>
+            
+            <div id="crop-container" style="position:relative; width:${cropSize}px; height:${cropSize}px; margin-bottom:15px; border:2px solid #4CAF50; overflow:hidden; cursor:move; background:#000;">
+                <img id="crop-image" src="${imageSrc}" style="position:absolute; user-select:none; pointer-events:none;">
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center;">
+                <button id="zoom-out" style="padding:8px 16px; background:var(--glass-bg); color:white; border:1px solid var(--glass-border); border-radius:8px; cursor:pointer; font-size:18px;">−</button>
+                <span style="color:white; font-size:12px; min-width:80px; text-align:center;" id="zoom-level">缩放: 100%</span>
+                <button id="zoom-in" style="padding:8px 16px; background:var(--glass-bg); color:white; border:1px solid var(--glass-border); border-radius:8px; cursor:pointer; font-size:18px;">+</button>
+                <button id="reset-crop" style="padding:8px 16px; background:var(--glass-bg); color:white; border:1px solid var(--glass-border); border-radius:8px; cursor:pointer; font-size:12px;">重置</button>
+            </div>
+            
+            <div style="display:flex; gap:10px;">
+                <button id="crop-confirm" style="padding:12px 24px; background:var(--primary-color); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:600;">确认裁切</button>
+                <button id="crop-cancel" style="padding:12px 24px; background:rgba(255,255,255,0.1); color:white; border:1px solid var(--glass-border); border-radius:10px; cursor:pointer;">取消</button>
+            </div>
+        `;
+        
+        document.body.appendChild(cropDialog);
+        
+        const container = document.getElementById('crop-container');
+        const image = document.getElementById('crop-image');
+        const zoomLevelText = document.getElementById('zoom-level');
+        
+        // 图片状态
+        let scale = 1;
+        let posX = 0;
+        let posY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let imgWidth = 0;
+        let imgHeight = 0;
+        
+        // 加载图片并初始化
+        const img = new Image();
+        img.onload = () => {
+            imgWidth = img.width;
+            imgHeight = img.height;
+            
+            // 计算初始缩放比例，使图片完全覆盖裁切框
+            const scaleX = cropSize / imgWidth;
+            const scaleY = cropSize / imgHeight;
+            scale = Math.max(scaleX, scaleY) * 1.1; // 稍微放大一点
+            
+            // 居中显示
+            updateImageTransform();
+            centerImage();
+        };
+        img.src = imageSrc;
+        
+        // 更新图片变换
+        const updateImageTransform = () => {
+            const w = imgWidth * scale;
+            const h = imgHeight * scale;
+            image.style.width = w + 'px';
+            image.style.height = h + 'px';
+            image.style.left = posX + 'px';
+            image.style.top = posY + 'px';
+            zoomLevelText.textContent = `缩放: ${Math.round(scale * 100)}%`;
+        };
+        
+        // 居中图片
+        const centerImage = () => {
+            const w = imgWidth * scale;
+            const h = imgHeight * scale;
+            posX = (cropSize - w) / 2;
+            posY = (cropSize - h) / 2;
+            updateImageTransform();
+        };
+        
+        // 限制图片位置，确保不会拖出边界太多
+        const constrainPosition = () => {
+            const w = imgWidth * scale;
+            const h = imgHeight * scale;
+            
+            // 允许拖动，但至少保持一部分在裁切框内
+            const minOverlap = 50; // 最小重叠像素
+            
+            if (posX > cropSize - minOverlap) posX = cropSize - minOverlap;
+            if (posY > cropSize - minOverlap) posY = cropSize - minOverlap;
+            if (posX < -(w - minOverlap)) posX = -(w - minOverlap);
+            if (posY < -(h - minOverlap)) posY = -(h - minOverlap);
+        };
+        
+        // 鼠标拖动
+        container.onmousedown = (e) => {
+            isDragging = true;
+            startX = e.clientX - posX;
+            startY = e.clientY - posY;
+            container.style.cursor = 'grabbing';
+        };
+        
+        document.onmousemove = (e) => {
+            if (!isDragging) return;
+            posX = e.clientX - startX;
+            posY = e.clientY - startY;
+            constrainPosition();
+            updateImageTransform();
+        };
+        
+        document.onmouseup = () => {
+            if (isDragging) {
+                isDragging = false;
+                container.style.cursor = 'move';
+            }
+        };
+        
+        // 触摸拖动（移动端支持）
+        container.ontouchstart = (e) => {
+            isDragging = true;
+            const touch = e.touches[0];
+            startX = touch.clientX - posX;
+            startY = touch.clientY - posY;
+            e.preventDefault();
+        };
+        
+        document.ontouchmove = (e) => {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            posX = touch.clientX - startX;
+            posY = touch.clientY - startY;
+            constrainPosition();
+            updateImageTransform();
+            e.preventDefault();
+        };
+        
+        document.ontouchend = () => {
+            isDragging = false;
+        };
+        
+        // 滚轮缩放
+        container.onwheel = (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = scale * delta;
+            
+            // 限制缩放范围
+            if (newScale >= 0.5 && newScale <= 5) {
+                // 计算鼠标位置相对于容器的坐标
+                const rect = container.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // 以鼠标位置为中心缩放
+                const offsetX = mouseX - posX;
+                const offsetY = mouseY - posY;
+                
+                scale = newScale;
+                
+                posX = mouseX - offsetX * (scale / (scale / delta));
+                posY = mouseY - offsetY * (scale / (scale / delta));
+                
+                constrainPosition();
+                updateImageTransform();
+            }
+        };
+        
+        // 缩放按钮
+        document.getElementById('zoom-in').onclick = () => {
+            if (scale < 5) {
+                scale *= 1.2;
+                centerImage();
+            }
+        };
+        
+        document.getElementById('zoom-out').onclick = () => {
+            if (scale > 0.5) {
+                scale *= 0.8;
+                centerImage();
+            }
+        };
+        
+        // 重置按钮
+        document.getElementById('reset-crop').onclick = () => {
+            const scaleX = cropSize / imgWidth;
+            const scaleY = cropSize / imgHeight;
+            scale = Math.max(scaleX, scaleY) * 1.1;
+            centerImage();
+        };
+        
+        // 确认裁切
+        document.getElementById('crop-confirm').onclick = async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = cropSize;
+            canvas.height = cropSize;
+            const ctx = canvas.getContext('2d');
+            
+            // 计算裁切区域在原图中的位置
+            const sourceX = -posX / scale;
+            const sourceY = -posY / scale;
+            const sourceSize = cropSize / scale;
+            
+            // 绘制裁切后的图片
+            ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, cropSize, cropSize);
+            
+            // 转换为blob
+            canvas.toBlob(async (blob) => {
+                await saveAppIcon(appId, blob, 'upload');
+                document.body.removeChild(cropDialog);
+                // 清理事件监听
+                document.onmousemove = null;
+                document.onmouseup = null;
+                document.ontouchmove = null;
+                document.ontouchend = null;
+            }, 'image/png');
+        };
+        
+        // 取消按钮
+        document.getElementById('crop-cancel').onclick = () => {
+            document.body.removeChild(cropDialog);
+            // 清理事件监听
+            document.onmousemove = null;
+            document.onmouseup = null;
+            document.ontouchmove = null;
+            document.ontouchend = null;
+        };
+    };
+    
+    // 保存应用图标
+    const saveAppIcon = async (appId, fileOrBlob, type) => {
+        const app = APPS.find(a => a.id === appId);
+        
+        try {
+            // 保存到IndexedDB
+            await db.put(STORES.IMAGES, {
+                id: `app_icon_${appId}`,
+                blob: fileOrBlob,
+                timestamp: Date.now()
+            });
+            
+            // 保存配置
+            if (!customIcons[appId]) customIcons[appId] = {};
+            customIcons[appId].type = type;
+            
+            settings.customAppIcons = customIcons;
+            await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+            
+            showToast(`${app.name} 图标已更新`);
+            await renderAppIconsList();
+            
+            // 刷新主界面图标
+            if (window.lnChat && window.lnChat.renderAppGrid) {
+                window.lnChat.renderAppGrid();
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('保存图标失败');
+        }
+    };
+    
+    // 重置单个应用图标
+    const resetAppIcon = async (appId) => {
+        const app = APPS.find(a => a.id === appId);
+        
+        if (!confirm(`确定要重置 ${app.name} 的图标吗？`)) return;
+        
+        try {
+            // 删除自定义图标
+            delete customIcons[appId];
+            settings.customAppIcons = customIcons;
+            await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+            
+            // 删除图片
+            await db.delete(STORES.IMAGES, `app_icon_${appId}`);
+            
+            showToast(`${app.name} 图标已重置`);
+            await renderAppIconsList();
+            
+            // 刷新主界面图标
+            if (window.lnChat && window.lnChat.renderAppGrid) {
+                window.lnChat.renderAppGrid();
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('重置图标失败');
+        }
+    };
+    
+    // 重置所有图标
+    document.getElementById('reset-all-icons-btn').onclick = async () => {
+        if (!confirm('确定要重置所有应用图标为默认吗？')) return;
+        
+        try {
+            // 删除所有自定义图标配置
+            settings.customAppIcons = {};
+            await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+            
+            // 删除所有图标图片
+            for (const app of APPS) {
+                try {
+                    await db.delete(STORES.IMAGES, `app_icon_${app.id}`);
+                } catch (e) {
+                    // 忽略不存在的图标
+                }
+            }
+            
+            showToast('所有图标已重置');
+            location.reload(); // 重新加载页面以应用更改
+        } catch (err) {
+            console.error(err);
+            showToast('重置失败');
+        }
+    };
+    
+    // 初始化渲染
+    await renderAppIconsList();
 
     // --- 气泡设置逻辑 ---
     
     const bubbleSettings = settings.bubbleSettings || {
-        user: { bgColor: '#2196F3', textColor: '#ffffff', radius: 20 },
-        assistant: { bgColor: 'rgba(255, 255, 255, 0.12)', textColor: '#ffffff', radius: 20 }
+        user: { bgColor: 'linear-gradient(135deg, #FFB6D9 0%, #FF8EC7 100%)', textColor: '#ffffff', radius: 24 },
+        assistant: { bgColor: 'rgba(230, 240, 255, 0.15)', textColor: '#ffffff', radius: 24 }
     };
 
     // 初始化控件值
@@ -988,8 +1603,8 @@ async function renderAppearanceSettings() {
         if (!confirm('确定要重置气泡样式为默认值吗？')) return;
         
         const defaultBubbles = {
-            user: { bgColor: '#2196F3', textColor: '#ffffff', radius: 20 },
-            assistant: { bgColor: 'rgba(255, 255, 255, 0.12)', textColor: '#ffffff', radius: 20 }
+            user: { bgColor: 'linear-gradient(135deg, #FFB6D9 0%, #FF8EC7 100%)', textColor: '#ffffff', radius: 24 },
+            assistant: { bgColor: 'rgba(230, 240, 255, 0.15)', textColor: '#ffffff', radius: 24 }
         };
 
         const newSettings = {
@@ -1066,6 +1681,240 @@ async function renderAppearanceSettings() {
     document.getElementById('action-custom-css').onchange = saveCustomCss;
     document.getElementById('thought-custom-css').onchange = saveCustomCss;
     document.getElementById('state-custom-css').onchange = saveCustomCss;
+
+    // --- 自定义字体逻辑 ---
+    let currentFontData = null; // 存储当前字体数据（blob 或 url）
+    let currentFontType = null; // 'upload' 或 'url'
+    
+    const fontPreview = document.getElementById('font-preview');
+    const fontStatus = document.getElementById('font-status');
+    const fontStatusText = document.getElementById('font-status-text');
+    const fontNameInput = document.getElementById('custom-font-name');
+    
+    // 初始化：如果已有自定义字体，加载并应用
+    const initCustomFont = async () => {
+        if (settings.customFont) {
+            const { name, type } = settings.customFont;
+            fontNameInput.value = name || '';
+            
+            if (type === 'upload') {
+                // 从IndexedDB加载字体文件
+                try {
+                    const fontData = await db.get(STORES.IMAGES, 'custom_font');
+                    if (fontData && fontData.blob) {
+                        currentFontData = fontData.blob;
+                        currentFontType = 'upload';
+                        await loadFontToPage(name, fontData.blob);
+                        applyFontGlobally(name);
+                        showFontStatus(`已加载字体: ${name} (本地上传)`);
+                    }
+                } catch (e) {
+                    console.error('加载自定义字体失败:', e);
+                }
+            } else if (type === 'url' && settings.customFont.url) {
+                currentFontData = settings.customFont.url;
+                currentFontType = 'url';
+                await loadFontToPage(name, settings.customFont.url);
+                applyFontGlobally(name);
+                showFontStatus(`已加载字体: ${name} (在线URL)`);
+            }
+        }
+    };
+    
+    // 显示字体状态
+    const showFontStatus = (message) => {
+        fontStatusText.textContent = message;
+        fontStatus.style.display = 'block';
+    };
+    
+    // 加载字体到页面
+    const loadFontToPage = async (fontName, source) => {
+        try {
+            let fontUrl;
+            
+            if (source instanceof Blob) {
+                fontUrl = URL.createObjectURL(source);
+            } else {
+                fontUrl = source; // 直接使用URL
+            }
+            
+            // 创建 @font-face 规则
+            const fontFace = new FontFace(fontName, `url(${fontUrl})`);
+            await fontFace.load();
+            document.fonts.add(fontFace);
+            
+            // 应用到预览
+            fontPreview.style.fontFamily = `"${fontName}", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            
+            return true;
+        } catch (e) {
+            console.error('字体加载失败:', e);
+            showToast('字体加载失败: ' + e.message);
+            return false;
+        }
+    };
+    
+    // 应用字体到全局
+    const applyFontGlobally = (fontName) => {
+        document.documentElement.style.setProperty('--custom-font', `"${fontName}", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`);
+        document.body.style.fontFamily = `"${fontName}", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    };
+    
+    // 上传字体文件
+    const fontFileInput = document.getElementById('font-file-input');
+    document.getElementById('upload-font-btn').onclick = () => {
+        fontFileInput.click();
+    };
+    
+    fontFileInput.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // 检查文件大小（限制30MB）
+    if (file.size > 30 * 1024 * 1024) {
+        showToast('字体文件不能超过 30MB');
+        return;
+    }
+        
+        // 检查文件扩展名
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['ttf', 'otf', 'woff', 'woff2'].includes(ext)) {
+            showToast('仅支持 TTF、OTF、WOFF、WOFF2 格式');
+            return;
+        }
+        
+        try {
+            currentFontData = file;
+            currentFontType = 'upload';
+            
+            // 如果没有设置字体名称，使用文件名
+            if (!fontNameInput.value.trim()) {
+                const defaultName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9]/g, '');
+                fontNameInput.value = defaultName || 'CustomFont';
+            }
+            
+            showFontStatus(`字体文件已选择: ${file.name}，请点击"应用字体"按钮`);
+        } catch (err) {
+            console.error(err);
+            showToast('字体文件处理失败');
+        }
+    };
+    
+    // 使用在线URL
+    document.getElementById('url-font-btn').onclick = async () => {
+        const url = prompt('请输入字体文件的在线 URL (支持 .ttf, .otf, .woff, .woff2):');
+        if (!url || !url.trim()) return;
+        
+        const trimmedUrl = url.trim();
+        
+        // 简单验证URL格式
+        try {
+            new URL(trimmedUrl);
+        } catch (e) {
+            showToast('URL 格式无效');
+            return;
+        }
+        
+        currentFontData = trimmedUrl;
+        currentFontType = 'url';
+        
+        // 如果没有设置字体名称，生成一个默认名称
+        if (!fontNameInput.value.trim()) {
+            fontNameInput.value = 'OnlineFont' + Date.now();
+        }
+        
+        showFontStatus(`字体 URL 已设置，请点击"应用字体"按钮`);
+    };
+    
+    // 应用字体
+    document.getElementById('apply-font-btn').onclick = async () => {
+        const fontName = fontNameInput.value.trim();
+        
+        if (!fontName) {
+            showToast('请输入字体名称');
+            return;
+        }
+        
+        if (!currentFontData) {
+            showToast('请先上传字体文件或设置在线 URL');
+            return;
+        }
+        
+        try {
+            // 加载字体到页面
+            const success = await loadFontToPage(fontName, currentFontData);
+            if (!success) return;
+            
+            // 保存字体设置
+            const fontSettings = {
+                name: fontName,
+                type: currentFontType
+            };
+            
+            if (currentFontType === 'upload') {
+                // 保存字体文件到IndexedDB
+                await db.put(STORES.IMAGES, {
+                    id: 'custom_font',
+                    blob: currentFontData,
+                    timestamp: Date.now()
+                });
+            } else if (currentFontType === 'url') {
+                fontSettings.url = currentFontData;
+            }
+            
+            settings.customFont = fontSettings;
+            await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+            
+            // 应用到全局
+            applyFontGlobally(fontName);
+            
+            showFontStatus(`✓ 字体 "${fontName}" 已成功应用`);
+            showToast('字体已应用到所有文字');
+            
+            await Logger.log(LOG_TYPES.SETTING, `Applied custom font: ${fontName} (${currentFontType})`);
+        } catch (err) {
+            console.error(err);
+            showToast('应用字体失败: ' + err.message);
+        }
+    };
+    
+    // 重置字体
+    document.getElementById('reset-font-btn').onclick = async () => {
+        if (!confirm('确定要重置为系统默认字体吗？')) return;
+        
+        try {
+            // 删除字体设置
+            delete settings.customFont;
+            await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+            
+            // 删除字体文件
+            try {
+                await db.delete(STORES.IMAGES, 'custom_font');
+            } catch (e) {
+                // 忽略不存在的情况
+            }
+            
+            // 重置全局样式
+            document.documentElement.style.removeProperty('--custom-font');
+            document.body.style.fontFamily = '';
+            fontPreview.style.fontFamily = '';
+            
+            // 重置UI
+            fontNameInput.value = '';
+            fontStatus.style.display = 'none';
+            currentFontData = null;
+            currentFontType = null;
+            
+            showToast('字体已重置为默认');
+            await Logger.log(LOG_TYPES.SETTING, 'Reset custom font to default');
+        } catch (err) {
+            console.error(err);
+            showToast('重置字体失败');
+        }
+    };
+    
+    // 初始化字体
+    await initCustomFont();
 }
 
 async function renderBackupSettings() {
@@ -1300,14 +2149,14 @@ async function getSettings() {
     if (!s.bubbleSettings) {
         s.bubbleSettings = {
             user: {
-                bgColor: '#2196F3',
+                bgColor: 'linear-gradient(135deg, #FFB6D9 0%, #FF8EC7 100%)',
                 textColor: '#ffffff',
-                radius: 20
+                radius: 24
             },
             assistant: {
-                bgColor: 'rgba(255, 255, 255, 0.12)',
+                bgColor: 'rgba(230, 240, 255, 0.15)',
                 textColor: '#ffffff',
-                radius: 20
+                radius: 24
             }
         };
     }
