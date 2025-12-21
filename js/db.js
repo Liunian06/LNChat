@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'LNChatDB';
-const DB_VERSION = 3;
+const DB_VERSION = 5;
 
 export const STORES = {
     CONTACTS: 'contacts',
@@ -12,7 +12,10 @@ export const STORES = {
     SETTINGS: 'settings',
     IMAGES: 'images',
     SESSIONS: 'sessions',
-    LOGS: 'logs'
+    LOGS: 'logs',
+    MOMENTS: 'moments',
+    MEMORIES: 'memories',
+    USER_PERSONAS: 'user_personas'
 };
 
 class LNChatDB {
@@ -73,6 +76,25 @@ class LNChatDB {
                     const logStore = db.createObjectStore(STORES.LOGS, { keyPath: 'id', autoIncrement: true });
                     logStore.createIndex('timestamp', 'timestamp', { unique: false });
                     logStore.createIndex('type', 'type', { unique: false });
+                }
+
+                // 朋友圈存储
+                if (!db.objectStoreNames.contains(STORES.MOMENTS)) {
+                    const momentStore = db.createObjectStore(STORES.MOMENTS, { keyPath: 'id' });
+                    momentStore.createIndex('contactId', 'contactId', { unique: false });
+                    momentStore.createIndex('date', 'date', { unique: false });
+                }
+
+                // 记忆存储
+                if (!db.objectStoreNames.contains(STORES.MEMORIES)) {
+                    const memoryStore = db.createObjectStore(STORES.MEMORIES, { keyPath: 'id' });
+                    memoryStore.createIndex('contactId', 'contactId', { unique: false });
+                    memoryStore.createIndex('date', 'date', { unique: false });
+                }
+
+                // 用户人设存储
+                if (!db.objectStoreNames.contains(STORES.USER_PERSONAS)) {
+                    db.createObjectStore(STORES.USER_PERSONAS, { keyPath: 'id' });
                 }
             };
 

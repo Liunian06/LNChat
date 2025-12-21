@@ -3,7 +3,9 @@
  */
 
 import { db, STORES } from '../db.js';
-import { formatTime, simpleMarkdown, showToast, generateId, getDefaultSystemPrompt, getCurrentTimestamp } from '../utils.js';
+import { formatTime, simpleMarkdown, showToast, generateId, getDefaultSystemPrompt, getCurrentTimestamp, formatDate } from '../utils.js';
+import { getLocation } from '../location.js';
+import { getWeather } from '../weather.js';
 import { Logger, LOG_TYPES } from '../logger.js';
 
 let container, headerActions;
@@ -200,19 +202,63 @@ async function showContactSelector() {
     container.querySelectorAll('.contact-select-item').forEach(item => {
         item.onclick = async () => {
             const contactId = item.dataset.id;
-            const contact = await db.get(STORES.CONTACTS, contactId);
-            const newSession = {
-                id: generateId(),
-                contactId: contactId,
-                title: `与 ${contact.name} 的对话`,
-                createdAt: new Date().toISOString(),
-                lastActive: new Date().toISOString(),
-                lastMessage: '新开启的对话'
-            };
-            await db.put(STORES.SESSIONS, newSession);
-            openChat(newSession.id);
+            await showUserPersonaSelector(contactId);
         };
     });
+}
+
+async function showUserPersonaSelector(contactId) {
+    const personas = await db.getAll(STORES.USER_PERSONAS);
+    
+    if (personas.length === 0) {
+        await createSession(contactId, null);
+        return;
+    }
+
+    window.lnChat.appTitle.textContent = '选择你的身份';
+    
+    container.innerHTML = `
+        <div class="chat-contact-list">
+            <div class="chat-item persona-select-item" data-id="null">
+                <div class="avatar">👤</div>
+                <div class="info">
+                    <div class="name">默认 (无设定)</div>
+                    <div class="desc">不使用特定用户人设</div>
+                </div>
+            </div>
+            ${personas.map(p => `
+                <div class="chat-item persona-select-item" data-id="${p.id}">
+                    <div class="avatar">👤</div>
+                    <div class="info">
+                        <div class="name">${p.name}</div>
+                        <div class="desc">${p.description || ''}</div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    container.querySelectorAll('.persona-select-item').forEach(item => {
+        item.onclick = async () => {
+            const personaId = item.dataset.id === 'null' ? null : item.dataset.id;
+            await createSession(contactId, personaId);
+        };
+    });
+}
+
+async function createSession(contactId, userPersonaId) {
+    const contact = await db.get(STORES.CONTACTS, contactId);
+    const newSession = {
+        id: generateId(),
+        contactId: contactId,
+        userPersonaId: userPersonaId,
+        title: `与 ${contact.name} 的对话`,
+        createdAt: new Date().toISOString(),
+        lastActive: new Date().toISOString(),
+        lastMessage: '新开启的对话'
+    };
+    await db.put(STORES.SESSIONS, newSession);
+    openChat(newSession.id);
 }
 
 /**
@@ -262,7 +308,42 @@ async function openChat(chatId) {
 
     const renderMessages = async () => {
         const history = await db.getChatHistory(chatId);
-        messagesDiv.innerHTML = history.map(msg => {
+        
+        // 预处理历史记录，展开未正确解析的消息
+        const expandedHistory = [];
+        for (const msg of history) {
+            // 检查是否是包含 XML 标签的 Assistant 文本消息
+            if (msg.sender === 'assistant' && msg.type === 'text' && /<(words|action|thought|state)(?:\s+[^>]*)?>/i.test(msg.content)) {
+                const parsedParts = [];
+                const tagRegex = /<(words|action|thought|state)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
+                let match;
+                while ((match = tagRegex.exec(msg.content)) !== null) {
+                    let type = match[1].toLowerCase();
+                    if (type === 'words') type = 'text';
+                    parsedParts.push({
+                        type: type,
+                        content: match[2].trim()
+                    });
+                }
+                
+                if (parsedParts.length > 0) {
+                    parsedParts.forEach((part, index) => {
+                        expandedHistory.push({
+                            ...msg,
+                            virtualId: `${msg.id}_${index}`,
+                            type: part.type,
+                            content: part.content
+                        });
+                    });
+                } else {
+                    expandedHistory.push(msg);
+                }
+            } else {
+                expandedHistory.push(msg);
+            }
+        }
+
+        messagesDiv.innerHTML = expandedHistory.map(msg => {
             if (msg.status === 'recalled') {
                 return `<div class="message system"><div class="msg-content">消息已撤回</div></div>`;
             }
@@ -288,7 +369,7 @@ async function openChat(chatId) {
             }
 
             return `
-                <div class="message ${msg.sender} ${msg.type} ${msg.status}" data-id="${msg.id}">
+                <div class="message ${msg.sender} ${msg.type} ${msg.status}" data-id="${msg.virtualId || msg.id}">
                     <div class="msg-content">${contentHtml}</div>
                     <div class="msg-time">${timeDisplay}</div>
                 </div>
@@ -387,10 +468,76 @@ async function processAIResponse(session, contact) {
         const recent = history.slice(-contextCount);
 
         const apiMessages = [];
-        if (settings.systemPrompt) {
-            apiMessages.push({ role: 'system', content: settings.systemPrompt });
+        let systemContent = settings.systemPrompt || '';
+        
+        // 角色人设
+        systemContent += `\n\n\n以下是角色人设：\n角色名：${contact.name}\n角色人设：\n${contact.description || '无'}`;
+
+        // 用户人设
+        if (session.userPersonaId) {
+            const userPersona = await db.get(STORES.USER_PERSONAS, session.userPersonaId);
+            if (userPersona) {
+                 systemContent += `\n\n\n以下是用户人设：\n用户名：${userPersona.name || '用户'}\n用户人设：\n${userPersona.description || '无'}`;
+            }
         }
-        apiMessages.push({ role: 'system', content: `你是一个名为${contact.name}的AI助手。人设：${contact.description || '无'}` });
+
+        // 系统信息
+        const now = new Date();
+        let systemInfo = '';
+        
+        if (settings.includeDate !== false) {
+             const dateStr = formatDate(now);
+             systemInfo += `当前日期为：${dateStr}\n`;
+        }
+        
+        if (settings.includeTime !== false) {
+             const timeStr = now.toTimeString().split(' ')[0];
+             systemInfo += `当前时间为：${timeStr}\n`;
+        }
+
+        if (settings.includeLocation) {
+             const city = await getLocation();
+             if (city) {
+                 systemInfo += `用户当前定位：${city}\n`;
+
+                 if (settings.includeWeather) {
+                     const weather = await getWeather(city);
+                     if (weather) {
+                         systemInfo += `当前天气：${weather.temperature}, ${weather.description}, 风速 ${weather.wind}\n`;
+
+                         if (settings.includeForecast && weather.forecast && weather.forecast.length > 0) {
+                             const days = settings.forecastDays || 3;
+                             const forecastList = weather.forecast.slice(0, days);
+                             if (forecastList.length > 0) {
+                                 systemInfo += `未来${forecastList.length}天预报：\n`;
+                                 forecastList.forEach(f => {
+                                     systemInfo += `- 第${f.day}天: ${f.temperature}, 风速 ${f.wind}\n`;
+                                 });
+                             }
+                         }
+                     }
+                 }
+             }
+        }
+
+        if (settings.includeBattery) {
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    const level = Math.round(battery.level * 100);
+                    const charging = battery.charging ? '充电中' : '未充电';
+                    systemInfo += `当前电量：${level}% (${charging})\n`;
+                } catch (e) {
+                    console.warn('Failed to get battery info', e);
+                }
+            }
+        }
+
+        if (systemInfo) {
+            systemContent += `\n\n系统信息：\n${systemInfo.trim()}`;
+        }
+
+        apiMessages.push({ role: 'system', content: systemContent });
         apiMessages.push(...recent.map(m => {
             let content = m.content;
             if (m.sender === 'assistant') {
@@ -439,6 +586,8 @@ async function processAIResponse(session, contact) {
             
             // 尝试解析 XML
             let parsedMessages = [];
+            let additionData = {};
+
             try {
                 // 提取 <output> 块，防止 AI 输出多余文本导致解析失败
                 const xmlMatch = aiContent.match(/<output>[\s\S]*?<\/output>/);
@@ -470,9 +619,94 @@ async function processAIResponse(session, contact) {
                             }
                         }
                     }
+
+                    // 解析额外内容 (addition)
+                    const additionNode = outputNode.querySelector('addition');
+                    if (additionNode) {
+                        const diaryNode = additionNode.querySelector('diary');
+                        if (diaryNode && diaryNode.textContent.trim()) {
+                            additionData.diary = diaryNode.textContent.trim();
+                        }
+
+                        const momentNode = additionNode.querySelector('moment');
+                        if (momentNode && momentNode.textContent.trim()) {
+                            additionData.moment = momentNode.textContent.trim();
+                        }
+
+                        const memoryNode = additionNode.querySelector('memory');
+                        if (memoryNode && memoryNode.textContent.trim()) {
+                            additionData.memory = memoryNode.textContent.trim();
+                        }
+                    }
                 }
             } catch (e) {
-                console.warn('XML Parsing failed or not XML, falling back to text', e);
+                console.warn('XML Parsing failed or not XML, falling back to Regex', e);
+            }
+
+            // 如果 DOM 解析失败 (parsedMessages 为空)，尝试 Regex 解析
+            if (parsedMessages.length === 0) {
+                const tagRegex = /<(words|action|thought|state)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
+                let match;
+                while ((match = tagRegex.exec(aiContent)) !== null) {
+                    let type = match[1].toLowerCase();
+                    if (type === 'words') type = 'text';
+                    parsedMessages.push({
+                        type: type,
+                        content: match[2].trim()
+                    });
+                }
+                
+                // Regex for addition
+                const diaryMatch = aiContent.match(/<diary>(.*?)<\/diary>/is);
+                if (diaryMatch) additionData.diary = diaryMatch[1].trim();
+
+                const momentMatch = aiContent.match(/<moment>(.*?)<\/moment>/is);
+                if (momentMatch) additionData.moment = momentMatch[1].trim();
+
+                const memoryMatch = aiContent.match(/<memory>(.*?)<\/memory>/is);
+                if (memoryMatch) additionData.memory = memoryMatch[1].trim();
+            }
+
+            // 处理额外内容存储
+            if (additionData.diary) {
+                const diaryEntry = {
+                    id: generateId(),
+                    title: `${contact.name}的日记本`,
+                    date: new Date().toISOString().split('T')[0],
+                    mood: '开心', // 默认为开心，后续可根据 state 优化
+                    content: additionData.diary,
+                    createdAt: now,
+                    updatedAt: now,
+                    source: 'ai_chat',
+                    contactId: contact.id
+                };
+                await db.put(STORES.DIARIES, diaryEntry);
+                showToast('已自动记录日记');
+            }
+
+            if (additionData.moment) {
+                const momentEntry = {
+                    id: generateId(),
+                    contactId: contact.id,
+                    content: additionData.moment,
+                    date: now,
+                    likes: [],
+                    comments: []
+                };
+                await db.put(STORES.MOMENTS, momentEntry);
+                showToast('已发布朋友圈动态');
+            }
+
+            if (additionData.memory) {
+                const memoryEntry = {
+                    id: generateId(),
+                    contactId: contact.id,
+                    content: additionData.memory,
+                    date: now,
+                    type: 'fact'
+                };
+                await db.put(STORES.MEMORIES, memoryEntry);
+                showToast('已记录关键记忆');
             }
 
             // 如果解析失败或为空，回退到纯文本
@@ -539,7 +773,10 @@ async function getSettings() {
             }
         ],
         systemPrompt: await getDefaultSystemPrompt(),
-        contextCount: 2000
+        contextCount: 2000,
+        includeDate: true,
+        includeTime: true,
+        includeLocation: true
     };
 
     if (!s) return defaultSettings;
@@ -562,10 +799,17 @@ async function getSettings() {
         };
     }
 
-    // 如果系统提示词为空，使用默认值
-    if (!s.systemPrompt) {
-        s.systemPrompt = await getDefaultSystemPrompt();
-    }
+    // 强制使用文件中的系统提示词，确保始终最新
+    s.systemPrompt = await getDefaultSystemPrompt();
+
+    // 确保新字段有默认值
+    if (s.includeDate === undefined) s.includeDate = true;
+    if (s.includeTime === undefined) s.includeTime = true;
+    if (s.includeLocation === undefined) s.includeLocation = true;
+    if (s.includeWeather === undefined) s.includeWeather = true;
+    if (s.includeForecast === undefined) s.includeForecast = true;
+    if (s.forecastDays === undefined) s.forecastDays = 3;
+    if (s.includeBattery === undefined) s.includeBattery = true;
 
     return s;
 }

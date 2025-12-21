@@ -75,14 +75,14 @@ class LNChatSystem {
         // 动态加载应用模块
         try {
             let module;
-            if (['moments', 'memory', 'wallet', 'store'].includes(appId)) {
+            if (['wallet', 'store'].includes(appId)) {
                 module = await import(`./apps/placeholder.js`);
             } else {
                 module = await import(`./apps/${appId}.js`);
             }
             
             if (module.init) {
-                module.init(this.appContent, document.getElementById('header-actions'));
+                await module.init(this.appContent, document.getElementById('header-actions'));
             }
         } catch (error) {
             console.error(`加载应用 ${appId} 失败:`, error);

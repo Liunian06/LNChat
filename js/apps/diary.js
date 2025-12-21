@@ -36,7 +36,7 @@ async function renderList() {
                 <div class="item diary-item" data-id="${d.id}">
                     <div class="mood-icon">${getMoodEmoji(d.mood)}</div>
                     <div class="info">
-                        <div class="name">${d.title}</div>
+                        <div class="name">${d.title.replace(/^与 (.+) 的对话日记$/, '$1的日记本')}</div>
                         <div class="desc">${formatDate(d.date)}</div>
                     </div>
                 </div>
@@ -56,7 +56,7 @@ async function renderDetail(id) {
 
     container.innerHTML = `
         <div class="detail-container">
-            <h2>${diary.title}</h2>
+            <h2>${diary.title.replace(/^与 (.+) 的对话日记$/, '$1的日记本')}</h2>
             <div class="meta">${formatDate(diary.date)} | 心情: ${getMoodEmoji(diary.mood)} ${diary.mood}</div>
             <div class="content">${diary.content.replace(/\n/g, '<br>')}</div>
             <div class="form-actions" style="margin-top:20px">
@@ -80,7 +80,7 @@ async function renderForm(id = null) {
         <div class="form-container">
             <div class="input-group">
                 <label>标题</label>
-                <input type="text" id="d-title" value="${diary.title}" placeholder="日记标题">
+                <input type="text" id="d-title" value="${diary.title.replace(/^与 (.+) 的对话日记$/, '$1的日记本')}" placeholder="日记标题">
             </div>
             <div class="input-group">
                 <label>日期</label>

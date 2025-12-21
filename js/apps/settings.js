@@ -5,6 +5,8 @@
 import { db, STORES } from '../db.js';
 import { showToast, generateId, getDefaultSystemPrompt, getCurrentTimestamp } from '../utils.js';
 import { Logger, LOG_TYPES } from '../logger.js';
+import { getLocation } from '../location.js';
+import { getWeather } from '../weather.js';
 
 let container, headerActions;
 let originalBackBtnClick;
@@ -393,14 +395,107 @@ async function renderPromptSettings() {
     window.lnChat.appTitle.textContent = '提示词设置';
     const settings = await getSettings();
     
+    // 确保默认值
+    if (settings.includeDate === undefined) settings.includeDate = true;
+    if (settings.includeTime === undefined) settings.includeTime = true;
+    if (settings.includeLocation === undefined) settings.includeLocation = true;
+    if (settings.includeWeather === undefined) settings.includeWeather = true;
+    if (settings.includeForecast === undefined) settings.includeForecast = true;
+    if (settings.forecastDays === undefined) settings.forecastDays = 3;
+    if (settings.includeBattery === undefined) settings.includeBattery = true;
+
     container.innerHTML = `
         <div class="settings-container" style="padding: 20px">
             <section>
                 <div class="input-group">
                     <label>全局系统提示词</label>
-                    <textarea id="system-prompt" style="height: 200px">${settings.systemPrompt || ''}</textarea>
-                    <p style="font-size:12px; color:var(--text-secondary); margin-top:8px">该提示词将作为所有对话的基础设定。</p>
+                    <div style="padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid var(--glass-border); color: var(--text-secondary); font-size: 13px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;">${settings.systemPrompt || '正在加载...'}</div>
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:8px">系统提示词已锁定为使用 assets/system_prompt.txt 文件内容，以确保最佳体验。</p>
                 </div>
+
+                <div class="input-group">
+                    <label>系统信息注入</label>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span>附带当前日期</span>
+                        <label class="switch">
+                            <input type="checkbox" id="include-date" ${settings.includeDate ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span>附带当前时间</span>
+                        <label class="switch">
+                            <input type="checkbox" id="include-time" ${settings.includeTime ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>附带当前定位</span>
+                        <label class="switch">
+                            <input type="checkbox" id="include-location" ${settings.includeLocation ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="location-preview-area" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; display:${settings.includeLocation ? 'block' : 'none'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-size:12px; color:var(--text-secondary);">
+                                <div>当前定位: <span id="location-val">${settings.locationData?.city || '未知'}</span></div>
+                                <div style="font-size:10px; opacity:0.7; margin-top:2px;">更新时间: <span id="location-time">${settings.locationData ? getCurrentTimestamp(new Date(settings.locationData.timestamp)) : '-'}</span></div>
+                            </div>
+                            <button id="test-location-btn" style="font-size:12px; padding:4px 8px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:4px; color:white; cursor:pointer;">刷新/测试</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                        <span>附带当前天气</span>
+                        <label class="switch">
+                            <input type="checkbox" id="include-weather" ${settings.includeWeather ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="weather-preview-area" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; display:${settings.includeWeather ? 'block' : 'none'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-size:12px; color:var(--text-secondary);">
+                                <div>当前天气: <span id="weather-val">${settings.weatherData ? `${settings.weatherData.temperature}, ${settings.weatherData.description}` : '未知'}</span></div>
+                                <div style="font-size:10px; opacity:0.7; margin-top:2px;">更新时间: <span id="weather-time">${settings.weatherData ? getCurrentTimestamp(new Date(settings.weatherData.timestamp)) : '-'}</span></div>
+                            </div>
+                            <button id="test-weather-btn" style="font-size:12px; padding:4px 8px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:4px; color:white; cursor:pointer;">刷新/测试</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                        <span>附带未来天气预报</span>
+                        <label class="switch">
+                            <input type="checkbox" id="include-forecast" ${settings.includeForecast ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="forecast-days-container" style="display:${settings.includeForecast ? 'flex' : 'none'}; justify-content:space-between; align-items:center; margin-top:10px; padding-left:10px; border-left:2px solid var(--glass-border);">
+                        <span style="font-size:13px;">预报天数 (1-3天)</span>
+                        <input type="number" id="forecast-days" value="${settings.forecastDays}" min="1" max="3" style="width:60px; padding:5px; border-radius:4px; border:none;">
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                        <span>附带系统电量</span>
+                        <label class="switch">
+                            <input type="checkbox" id="include-battery" ${settings.includeBattery ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="battery-preview-area" style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; display:${settings.includeBattery ? 'block' : 'none'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:12px; color:var(--text-secondary);">当前电量: <span id="battery-val">获取中...</span></span>
+                            <button id="test-battery-btn" style="font-size:12px; padding:4px 8px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:4px; color:white; cursor:pointer;">刷新</button>
+                        </div>
+                    </div>
+
+                    <p style="font-size:12px; color:var(--text-secondary); margin-top:8px">开启后，AI 将知道当前的现实时间、位置、天气与电量。</p>
+                </div>
+
                 <div class="input-group">
                     <label>聊天记录上下文数量 (当前: ${settings.contextCount || 2000})</label>
                     <input type="number" id="context-count" value="${settings.contextCount || 2000}" min="1" max="5000">
@@ -411,6 +506,100 @@ async function renderPromptSettings() {
         </div>
     `;
 
+    document.getElementById('include-location').onchange = (e) => {
+        document.getElementById('location-preview-area').style.display = e.target.checked ? 'block' : 'none';
+    };
+
+    document.getElementById('test-location-btn').onclick = async () => {
+        const btn = document.getElementById('test-location-btn');
+        const val = document.getElementById('location-val');
+        const timeVal = document.getElementById('location-time');
+        btn.disabled = true;
+        btn.textContent = '获取中...';
+        try {
+            const city = await getLocation(true); // Force refresh
+            val.textContent = city || '获取失败';
+            timeVal.textContent = getCurrentTimestamp();
+            showToast('定位已更新');
+        } catch (e) {
+            val.textContent = '错误';
+            showToast('定位失败: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '刷新/测试';
+        }
+    };
+
+    document.getElementById('include-weather').onchange = (e) => {
+        document.getElementById('weather-preview-area').style.display = e.target.checked ? 'block' : 'none';
+    };
+
+    document.getElementById('include-forecast').onchange = (e) => {
+        document.getElementById('forecast-days-container').style.display = e.target.checked ? 'flex' : 'none';
+    };
+
+    document.getElementById('include-battery').onchange = (e) => {
+        document.getElementById('battery-preview-area').style.display = e.target.checked ? 'block' : 'none';
+        if (e.target.checked) updateBatteryPreview();
+    };
+
+    const updateBatteryPreview = async () => {
+        const val = document.getElementById('battery-val');
+        if ('getBattery' in navigator) {
+            try {
+                const battery = await navigator.getBattery();
+                const level = Math.round(battery.level * 100);
+                const charging = battery.charging ? '充电中' : '未充电';
+                val.textContent = `${level}% (${charging})`;
+            } catch (e) {
+                val.textContent = '获取失败';
+            }
+        } else {
+            val.textContent = '不支持';
+        }
+    };
+
+    document.getElementById('test-battery-btn').onclick = updateBatteryPreview;
+
+    if (settings.includeBattery) {
+        updateBatteryPreview();
+    }
+
+    document.getElementById('test-weather-btn').onclick = async () => {
+        const btn = document.getElementById('test-weather-btn');
+        const val = document.getElementById('weather-val');
+        const timeVal = document.getElementById('weather-time');
+        
+        // Need location first
+        // Re-fetch settings to get latest location if updated
+        const currentSettings = await getSettings();
+        const city = currentSettings.locationData?.city;
+        
+        if (!city) {
+            return showToast('请先获取定位');
+        }
+
+        btn.disabled = true;
+        btn.textContent = '获取中...';
+        try {
+            const weather = await getWeather(city, true); // Force refresh
+            if (weather) {
+                val.textContent = `${weather.temperature}, ${weather.description}`;
+                timeVal.textContent = getCurrentTimestamp(new Date(weather.timestamp));
+                showToast('天气已更新');
+            } else {
+                val.textContent = '获取失败';
+                showToast('获取天气失败');
+            }
+        } catch (e) {
+            val.textContent = '错误';
+            showToast('天气失败: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '刷新/测试';
+        }
+    };
+
     document.getElementById('save-prompt-settings').onclick = async () => {
         const contextCount = parseInt(document.getElementById('context-count').value);
         if (isNaN(contextCount) || contextCount < 1 || contextCount > 5000) {
@@ -420,8 +609,15 @@ async function renderPromptSettings() {
         
         const newSettings = {
             ...settings,
-            systemPrompt: document.getElementById('system-prompt').value.trim(),
-            contextCount: contextCount
+            // systemPrompt: document.getElementById('system-prompt').value.trim(), // 已移除自定义编辑
+            contextCount: contextCount,
+            includeDate: document.getElementById('include-date').checked,
+            includeTime: document.getElementById('include-time').checked,
+            includeLocation: document.getElementById('include-location').checked,
+            includeWeather: document.getElementById('include-weather').checked,
+            includeForecast: document.getElementById('include-forecast').checked,
+            forecastDays: parseInt(document.getElementById('forecast-days').value) || 3,
+            includeBattery: document.getElementById('include-battery').checked
         };
         await db.put(STORES.SETTINGS, { key: 'ai_settings', ...newSettings });
         await Logger.log(LOG_TYPES.SETTING, `Updated prompt settings. Context count: ${contextCount}`);
@@ -1047,10 +1243,8 @@ async function getSettings() {
         s.customCss = { user: '', assistant: '', action: '', thought: '', state: '' };
     }
 
-    // 如果系统提示词为空，使用默认值
-    if (!s.systemPrompt) {
-        s.systemPrompt = await getDefaultSystemPrompt();
-    }
+    // 强制使用文件中的系统提示词，确保始终最新
+    s.systemPrompt = await getDefaultSystemPrompt();
 
     return s;
 }

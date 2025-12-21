@@ -6,14 +6,69 @@ import { db, STORES } from '../db.js';
 import { generateId, showToast } from '../utils.js';
 
 let container, headerActions;
+let currentTab = 'roles'; // 'roles' | 'user'
 
 export async function init(target, actions) {
     container = target;
     headerActions = actions;
-    renderList();
+    renderTabs();
 }
 
-async function renderList() {
+function renderTabs() {
+    container.innerHTML = `
+        <div id="contacts-content" style="height: calc(100% - 50px); overflow-y: auto;"></div>
+        <div class="tab-bar" style="height: 50px; display: flex; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); position: absolute; bottom: 0; width: 100%;">
+            <div class="tab-item" id="tab-roles" style="flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s;">
+                <span style="font-size: 14px;">角色列表</span>
+            </div>
+            <div class="tab-item" id="tab-user" style="flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s;">
+                <span style="font-size: 14px;">我的设定</span>
+            </div>
+        </div>
+    `;
+
+    const updateTabStyles = () => {
+        const rolesTab = document.getElementById('tab-roles');
+        const userTab = document.getElementById('tab-user');
+        
+        if (currentTab === 'roles') {
+            rolesTab.style.color = 'var(--primary-color)';
+            rolesTab.style.fontWeight = 'bold';
+            userTab.style.color = 'var(--text-secondary)';
+            userTab.style.fontWeight = 'normal';
+        } else {
+            rolesTab.style.color = 'var(--text-secondary)';
+            rolesTab.style.fontWeight = 'normal';
+            userTab.style.color = 'var(--primary-color)';
+            userTab.style.fontWeight = 'bold';
+        }
+    };
+
+    document.getElementById('tab-roles').onclick = () => {
+        currentTab = 'roles';
+        updateTabStyles();
+        renderCurrentTab();
+    };
+    document.getElementById('tab-user').onclick = () => {
+        currentTab = 'user';
+        updateTabStyles();
+        renderCurrentTab();
+    };
+
+    updateTabStyles();
+    renderCurrentTab();
+}
+
+async function renderCurrentTab() {
+    const content = document.getElementById('contacts-content');
+    if (currentTab === 'roles') {
+        await renderList(content);
+    } else {
+        await renderUserPersona(content);
+    }
+}
+
+async function renderList(target) {
     const contacts = await db.getAll(STORES.CONTACTS);
     
     headerActions.innerHTML = `
@@ -22,7 +77,7 @@ async function renderList() {
     document.getElementById('add-contact-btn').onclick = () => renderForm();
 
     if (contacts.length === 0) {
-        container.innerHTML = `
+        target.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">👥</div>
                 <p>你的联系人列表空空如也</p>
@@ -33,8 +88,8 @@ async function renderList() {
         return;
     }
 
-    container.innerHTML = `
-        <div class="list-container">
+    target.innerHTML = `
+        <div class="list-container" style="padding-bottom: 60px;">
             ${contacts.map(c => `
                 <div class="item contact-item" data-id="${c.id}">
                     <div class="avatar">${c.avatar ? `<img src="${c.avatar}">` : '👤'}</div>
@@ -47,9 +102,119 @@ async function renderList() {
         </div>
     `;
 
-    container.querySelectorAll('.contact-item').forEach(item => {
+    target.querySelectorAll('.contact-item').forEach(item => {
         item.onclick = () => renderForm(item.dataset.id);
     });
+}
+
+async function renderUserPersona(target) {
+    // 迁移旧数据
+    const oldSetting = await db.get(STORES.SETTINGS, 'user_persona');
+    if (oldSetting) {
+        await db.put(STORES.USER_PERSONAS, {
+            id: generateId(),
+            name: oldSetting.name || '默认设定',
+            description: oldSetting.description,
+            createdAt: new Date().toISOString()
+        });
+        await db.delete(STORES.SETTINGS, 'user_persona');
+    }
+
+    const personas = await db.getAll(STORES.USER_PERSONAS);
+    
+    headerActions.innerHTML = `
+        <button class="add-btn" id="add-persona-btn" title="添加用户设定">＋</button>
+    `;
+    document.getElementById('add-persona-btn').onclick = () => renderUserPersonaForm(target);
+
+    if (personas.length === 0) {
+        target.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">👤</div>
+                <p>还没有用户设定</p>
+                <button id="empty-add-persona-btn">创建第一个设定</button>
+            </div>
+        `;
+        document.getElementById('empty-add-persona-btn').onclick = () => renderUserPersonaForm(target);
+        return;
+    }
+
+    target.innerHTML = `
+        <div class="list-container" style="padding-bottom: 60px;">
+            ${personas.map(p => `
+                <div class="item persona-item" data-id="${p.id}">
+                    <div class="avatar">👤</div>
+                    <div class="info">
+                        <div class="name">${p.name}</div>
+                        <div class="desc">${p.description || ''}</div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    target.querySelectorAll('.persona-item').forEach(item => {
+        item.onclick = () => renderUserPersonaForm(target, item.dataset.id);
+    });
+}
+
+async function renderUserPersonaForm(target, id = null) {
+    let persona = { name: '', description: '' };
+    if (id) {
+        persona = await db.get(STORES.USER_PERSONAS, id);
+    }
+
+    headerActions.innerHTML = '';
+    
+    target.innerHTML = `
+        <div class="form-container" style="padding: 20px;">
+            <div class="input-group">
+                <label>设定名称 (如: "默认", "热恋期")</label>
+                <input type="text" id="u-name" value="${persona.name}" placeholder="给这个设定起个名字...">
+            </div>
+            <div class="input-group">
+                <label>用户人设</label>
+                <textarea id="u-desc" rows="8" placeholder="描述你的性格、喜好、身份等...">${persona.description || ''}</textarea>
+            </div>
+            <div class="form-actions">
+                ${id ? `<button class="delete-btn" id="del-persona-btn">删除</button>` : ''}
+                <button class="save-btn" id="save-persona-btn">保存</button>
+                <button class="cancel-btn" id="cancel-persona-btn">取消</button>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('save-persona-btn').onclick = async () => {
+        const name = document.getElementById('u-name').value.trim();
+        const description = document.getElementById('u-desc').value.trim();
+        
+        if (!name) return showToast('请输入名称');
+
+        const newPersona = {
+            ...persona,
+            id: id || generateId(),
+            name,
+            description,
+            updatedAt: new Date().toISOString()
+        };
+        if (!id) newPersona.createdAt = new Date().toISOString();
+        
+        await db.put(STORES.USER_PERSONAS, newPersona);
+        showToast('保存成功');
+        renderUserPersona(target);
+    };
+
+    if (id) {
+        document.getElementById('del-persona-btn').onclick = async () => {
+            if (confirm('确定删除吗？')) {
+                await db.delete(STORES.USER_PERSONAS, id);
+                showToast('已删除');
+                renderUserPersona(target);
+            }
+        };
+    }
+
+    document.getElementById('cancel-persona-btn').onclick = () => renderUserPersona(target);
 }
 
 async function renderForm(id = null) {
@@ -141,5 +306,5 @@ async function renderForm(id = null) {
         };
     }
 
-    document.getElementById('cancel-btn').onclick = () => renderList();
+    document.getElementById('cancel-btn').onclick = () => renderTabs();
 }
