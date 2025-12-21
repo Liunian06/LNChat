@@ -8,33 +8,15 @@ import { db, STORES } from './db.js';
 // 定位API配置，按优先级排序
 const LOCATION_APIS = [
     {
-        name: 'geojs.io',
-        url: 'https://get.geojs.io/v1/ip/geo.json',
-        parseResponse: (data) => data.city,
-        enabled: true
-    },
-    {
         name: 'ipwho.is',
         url: 'https://ipwho.is/',
-        parseResponse: (data) => data.city,
-        enabled: true
-    },
-    {
-        name: 'ipapi.co',
-        url: 'https://ipapi.co/json/',
-        parseResponse: (data) => data.city,
-        enabled: true
-    },
-    {
-        name: 'ipinfo.io',
-        url: 'https://ipinfo.io/json',
-        parseResponse: (data) => data.city,
-        enabled: true
-    },
-    {
-        name: 'geolocation-db.com',
-        url: 'https://geolocation-db.com/json/',
-        parseResponse: (data) => data.city,
+        parseResponse: (data) => {
+            // 检查国家是否为中国
+            if (data.country !== 'China') {
+                throw new Error('检测到您可能在使用VPN或代理，请关闭后重试，或直接访问 ipwho.is');
+            }
+            return data.city;
+        },
         enabled: true
     }
 ];
