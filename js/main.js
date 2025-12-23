@@ -12,6 +12,7 @@ const APPS = [
     { id: 'diary', name: '日记', icon: '📔' },
     { id: 'moments', name: '朋友圈', icon: '🌟' },
     { id: 'memory', name: '记忆', icon: '🧠' },
+    { id: 'emoji', name: '表情库', icon: '😊' },
     { id: 'wallet', name: '钱包', icon: '💳' },
     { id: 'store', name: '商城', icon: '🛒' },
     { id: 'settings', name: '设置', icon: '⚙️' }
@@ -24,6 +25,7 @@ class LNChatSystem {
         this.appTitle = document.getElementById('app-title');
         this.appContent = document.getElementById('app-content');
         this.backBtn = document.getElementById('app-back-btn');
+        this.currentModule = null; // 当前加载的模块
         
         this.init();
     }
@@ -122,6 +124,8 @@ class LNChatSystem {
                 module = await import(`./apps/${appId}.js`);
             }
             
+            this.currentModule = module; // 保存当前模块引用
+            
             if (module.init) {
                 await module.init(this.appContent, document.getElementById('header-actions'));
             }
@@ -132,6 +136,12 @@ class LNChatSystem {
     }
 
     closeApp() {
+        // 调用当前模块的 cleanup 函数（如果存在）
+        if (this.currentModule && typeof this.currentModule.cleanup === 'function') {
+            this.currentModule.cleanup();
+        }
+        this.currentModule = null;
+        
         this.appOverlay.style.display = 'none';
         this.appContent.innerHTML = '';
         document.getElementById('header-actions').innerHTML = '';

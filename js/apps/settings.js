@@ -1039,6 +1039,7 @@ async function renderAppearanceSettings() {
         { id: 'diary', name: '日记', icon: '📔' },
         { id: 'moments', name: '朋友圈', icon: '🌟' },
         { id: 'memory', name: '记忆', icon: '🧠' },
+        { id: 'emoji', name: '表情库', icon: '😊' },
         { id: 'wallet', name: '钱包', icon: '💳' },
         { id: 'store', name: '商城', icon: '🛒' },
         { id: 'settings', name: '设置', icon: '⚙️' }
@@ -1957,10 +1958,23 @@ async function renderBackupSettings() {
     setSubPageBackBehavior();
     window.lnChat.appTitle.textContent = '数据备份与导出';
     
+    // 初始渲染骨架
     container.innerHTML = `
         <div class="settings-container" style="padding: 20px">
+            <!-- 数据统计面板 -->
+            <section style="margin-bottom: 25px;">
+                <h3 style="font-size:16px; margin-bottom:15px; color:var(--primary-color);">📊 数据统计</h3>
+                <div id="stats-panel" style="background:rgba(255,255,255,0.05); border-radius:15px; border:1px solid var(--glass-border); padding:15px;">
+                    <div style="text-align:center; padding:20px; color:var(--text-secondary);">
+                        <span style="font-size:20px;">⏳</span>
+                        <p style="margin-top:8px;">正在统计数据...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 操作按钮 -->
             <section>
-                <p style="font-size:14px; color:var(--text-secondary); margin-bottom:20px">由于使用了 IndexedDB，数据将更安全地存储在浏览器中。您可以定期导出备份以防数据丢失。</p>
+                <h3 style="font-size:16px; margin-bottom:15px; color:var(--primary-color);">📦 备份操作</h3>
                 <div style="display:flex; flex-direction:column; gap:15px">
                     <button class="save-btn" id="export-btn" style="background:#4CAF50">导出备份 (.json)</button>
                     <button class="save-btn" id="import-btn" style="background:#FF9800">导入备份 (.json)</button>
@@ -1970,6 +1984,9 @@ async function renderBackupSettings() {
             </section>
         </div>
     `;
+
+    // 异步加载统计数据
+    loadDataStats();
 
     document.getElementById('export-btn').onclick = exportData;
     
@@ -1996,6 +2013,187 @@ async function renderBackupSettings() {
             }
         }
     };
+}
+
+// 加载数据统计
+async function loadDataStats() {
+    const statsPanel = document.getElementById('stats-panel');
+    if (!statsPanel) return;
+
+    try {
+        // 获取各存储的数据
+        const [
+            contacts,
+            chatHistory,
+            sessions,
+            diaries,
+            moments,
+            memories,
+            images,
+            logs,
+            exchangeDiaries,
+            exchangeEntries,
+            emojiLibraries,
+            emojis,
+            userPersonas
+        ] = await Promise.all([
+            db.getAll(STORES.CONTACTS),
+            db.getAll(STORES.CHAT_HISTORY),
+            db.getAll(STORES.SESSIONS),
+            db.getAll(STORES.DIARIES),
+            db.getAll(STORES.MOMENTS),
+            db.getAll(STORES.MEMORIES),
+            db.getAll(STORES.IMAGES),
+            db.getAll(STORES.LOGS),
+            db.getAll(STORES.EXCHANGE_DIARIES),
+            db.getAll(STORES.EXCHANGE_DIARY_ENTRIES),
+            db.getAll(STORES.EMOJI_LIBRARIES),
+            db.getAll(STORES.EMOJIS),
+            db.getAll(STORES.USER_PERSONAS)
+        ]);
+
+        // 计算存储大小
+        const estimateSize = (data) => {
+            try {
+                return new Blob([JSON.stringify(data)]).size;
+            } catch (e) {
+                return 0;
+            }
+        };
+
+        const formatSize = (bytes) => {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        // 计算各项大小
+        const chatSize = estimateSize(chatHistory);
+        const imageSize = estimateSize(images);
+        const diarySize = estimateSize(diaries);
+        const momentSize = estimateSize(moments);
+        const memorySize = estimateSize(memories);
+        const logSize = estimateSize(logs);
+        const emojiSize = estimateSize(emojis);
+        const exchangeSize = estimateSize(exchangeDiaries) + estimateSize(exchangeEntries);
+        const otherSize = estimateSize(contacts) + estimateSize(sessions) + estimateSize(userPersonas) + estimateSize(emojiLibraries);
+
+        const totalSize = chatSize + imageSize + diarySize + momentSize + memorySize + logSize + emojiSize + exchangeSize + otherSize;
+
+        // 计算消息统计
+        const userMessages = chatHistory.filter(m => m.sender === 'user').length;
+        const aiMessages = chatHistory.filter(m => m.sender === 'assistant').length;
+
+        // 渲染统计面板
+        statsPanel.innerHTML = `
+            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-bottom:15px;">
+                <div style="background:rgba(76,175,80,0.1); padding:12px; border-radius:10px; text-align:center;">
+                    <div style="font-size:24px; font-weight:600; color:#4CAF50;">${chatHistory.length}</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">消息总数</div>
+                </div>
+                <div style="background:rgba(33,150,243,0.1); padding:12px; border-radius:10px; text-align:center;">
+                    <div style="font-size:24px; font-weight:600; color:#2196F3;">${contacts.length}</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">联系人</div>
+                </div>
+                <div style="background:rgba(255,152,0,0.1); padding:12px; border-radius:10px; text-align:center;">
+                    <div style="font-size:24px; font-weight:600; color:#FF9800;">${sessions.length}</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">会话数</div>
+                </div>
+                <div style="background:rgba(156,39,176,0.1); padding:12px; border-radius:10px; text-align:center;">
+                    <div style="font-size:24px; font-weight:600; color:#9C27B0;">${formatSize(totalSize)}</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">总存储</div>
+                </div>
+            </div>
+
+            <div style="border-top:1px solid var(--glass-border); padding-top:12px;">
+                <div style="font-size:13px; font-weight:500; margin-bottom:10px; color:white;">📝 详细统计</div>
+                
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">💬 聊天消息</span>
+                        <span style="color:white;">${chatHistory.length} 条 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(chatSize)})</span></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:6px 10px 6px 25px; font-size:12px;">
+                        <span style="color:var(--text-secondary);">└ 用户消息</span>
+                        <span style="color:#4CAF50;">${userMessages} 条</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:6px 10px 6px 25px; font-size:12px;">
+                        <span style="color:var(--text-secondary);">└ AI 回复</span>
+                        <span style="color:#2196F3;">${aiMessages} 条</span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">🖼️ 图片资源</span>
+                        <span style="color:white;">${images.length} 张 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(imageSize)})</span></span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">📔 日记</span>
+                        <span style="color:white;">${diaries.length} 篇 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(diarySize)})</span></span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">📝 交换日记</span>
+                        <span style="color:white;">${exchangeDiaries.length} 本 / ${exchangeEntries.length} 篇 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(exchangeSize)})</span></span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">🌟 朋友圈</span>
+                        <span style="color:white;">${moments.length} 条 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(momentSize)})</span></span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">🧠 记忆</span>
+                        <span style="color:white;">${memories.length} 条 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(memorySize)})</span></span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">😊 表情</span>
+                        <span style="color:white;">${emojiLibraries.length} 库 / ${emojis.length} 个 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(emojiSize)})</span></span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">👤 用户人设</span>
+                        <span style="color:white;">${userPersonas.length} 个</span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                        <span style="color:var(--text-secondary);">📋 日志</span>
+                        <span style="color:white;">${logs.length} 条 <span style="color:var(--text-secondary); font-size:11px;">(${formatSize(logSize)})</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:15px; padding:10px; background:rgba(33,150,243,0.1); border-radius:10px; border:1px solid rgba(33,150,243,0.3);">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:16px;">💡</span>
+                    <div style="font-size:12px; color:var(--text-secondary); line-height:1.5;">
+                        数据存储在浏览器 IndexedDB 中，建议定期导出备份。清除浏览器数据可能导致数据丢失。
+                    </div>
+                </div>
+            </div>
+
+            <button id="refresh-stats-btn" style="margin-top:12px; width:100%; padding:10px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:10px; color:white; font-size:13px; cursor:pointer;">
+                🔄 刷新统计
+            </button>
+        `;
+
+        // 刷新按钮
+        document.getElementById('refresh-stats-btn').onclick = () => loadDataStats();
+
+    } catch (err) {
+        console.error('加载统计数据失败:', err);
+        statsPanel.innerHTML = `
+            <div style="text-align:center; padding:20px; color:#f44336;">
+                <span style="font-size:20px;">❌</span>
+                <p style="margin-top:8px;">加载统计失败: ${err.message}</p>
+                <button id="retry-stats-btn" style="margin-top:10px; padding:8px 16px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:8px; color:white; cursor:pointer;">重试</button>
+            </div>
+        `;
+        document.getElementById('retry-stats-btn').onclick = () => loadDataStats();
+    }
 }
 
 async function renderDevSettings() {

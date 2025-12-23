@@ -8,6 +8,9 @@ import { getLocation } from '../location.js';
 import { getWeather } from '../weather.js';
 import { Logger, LOG_TYPES } from '../logger.js';
 
+// 表情包缓存，用于快速查找
+let emojiCache = null;
+
 let container, headerActions;
 let currentChatId = null;
 let messageTimer = null;
@@ -21,7 +24,167 @@ export async function init(target, actions) {
     headerActions = actions;
     isManageMode = false;
     selectedSessions.clear();
+    // 初始化时加载表情包缓存
+    await loadEmojiCache();
     renderMainSessionList();
+}
+
+/**
+ * 加载表情包缓存
+ */
+async function loadEmojiCache() {
+    const allEmojis = await db.getAll(STORES.EMOJIS);
+    emojiCache = {};
+    for (const emoji of allEmojis) {
+        emojiCache[emoji.id] = emoji;
+    }
+}
+
+/**
+ * 获取指定角色可用的表情包列表（用于 AI 的 system prompt）
+ * 包含：全局表情库 + 角色绑定的独立表情库 + 角色单独授权的表情包
+ * @param {string} contactId - 角色ID
+ * @returns {Promise<Array>} 表情包列表，包含id和meaning
+ */
+async function getAvailableEmojisForContact(contactId) {
+    const allLibraries = await db.getAll(STORES.EMOJI_LIBRARIES);
+    const allEmojis = await db.getAll(STORES.EMOJIS);
+    const contact = await db.get(STORES.CONTACTS, contactId);
+    
+    // 更新缓存
+    emojiCache = {};
+    for (const emoji of allEmojis) {
+        emojiCache[emoji.id] = emoji;
+    }
+    
+    // 找到全局表情库
+    const globalLibrary = allLibraries.find(lib => lib.type === 'global');
+    
+    // 找到该角色可以使用的独立表情库
+    const privateLibraries = allLibraries.filter(lib => {
+        if (lib.type !== 'private') return false;
+        const contactIds = lib.contactIds || (lib.contactId ? [lib.contactId] : []);
+        return contactIds.includes(contactId);
+    });
+    
+    // 收集可用的表情库ID
+    const availableLibraryIds = [];
+    if (globalLibrary) {
+        availableLibraryIds.push(globalLibrary.id);
+    }
+    for (const lib of privateLibraries) {
+        availableLibraryIds.push(lib.id);
+    }
+    
+    // 获取所有可用的表情（从表情库）
+    const availableEmojis = allEmojis.filter(emoji =>
+        availableLibraryIds.includes(emoji.libraryId)
+    );
+    
+    // 添加角色单独授权的表情包
+    const authorizedEmojiIds = contact?.authorizedEmojiIds || [];
+    for (const emojiId of authorizedEmojiIds) {
+        const emoji = emojiCache[emojiId];
+        if (emoji && !availableEmojis.find(e => e.id === emojiId)) {
+            availableEmojis.push(emoji);
+        }
+    }
+    
+    // 按ID升序排列
+    availableEmojis.sort((a, b) => {
+        const numA = parseInt(a.id.replace('emoji-id-', ''), 10);
+        const numB = parseInt(b.id.replace('emoji-id-', ''), 10);
+        return numA - numB;
+    });
+    
+    return availableEmojis;
+}
+
+/**
+ * 获取所有表情包（用于用户选择器，不受权限限制）
+ * @returns {Promise<Array>} 所有表情包列表
+ */
+async function getAllEmojis() {
+    const allEmojis = await db.getAll(STORES.EMOJIS);
+    
+    // 更新缓存
+    emojiCache = {};
+    for (const emoji of allEmojis) {
+        emojiCache[emoji.id] = emoji;
+    }
+    
+    // 按ID升序排列
+    allEmojis.sort((a, b) => {
+        const numA = parseInt(a.id.replace('emoji-id-', ''), 10);
+        const numB = parseInt(b.id.replace('emoji-id-', ''), 10);
+        return numA - numB;
+    });
+    
+    return allEmojis;
+}
+
+/**
+ * 检查表情包是否在角色的可用列表中
+ * @param {string} emojiId - 表情包ID
+ * @param {string} contactId - 角色ID
+ * @returns {Promise<boolean>} 是否可用
+ */
+async function isEmojiAvailableForContact(emojiId, contactId) {
+    const availableEmojis = await getAvailableEmojisForContact(contactId);
+    return availableEmojis.some(e => e.id === emojiId);
+}
+
+/**
+ * 为角色授权表情包
+ * @param {string} emojiId - 表情包ID
+ * @param {string} contactId - 角色ID
+ */
+async function authorizeEmojiForContact(emojiId, contactId) {
+    const contact = await db.get(STORES.CONTACTS, contactId);
+    if (!contact) return;
+    
+    // 初始化授权列表
+    if (!contact.authorizedEmojiIds) {
+        contact.authorizedEmojiIds = [];
+    }
+    
+    // 如果还没有授权，则添加
+    if (!contact.authorizedEmojiIds.includes(emojiId)) {
+        contact.authorizedEmojiIds.push(emojiId);
+        await db.put(STORES.CONTACTS, contact);
+    }
+}
+
+/**
+ * 构建可用表情包列表字符串（用于添加到 system prompt）
+ * @param {string} contactId - 角色ID
+ * @returns {Promise<string>} 表情包列表字符串
+ */
+async function buildEmojiListForPrompt(contactId) {
+    const emojis = await getAvailableEmojisForContact(contactId);
+    
+    if (emojis.length === 0) {
+        return '';
+    }
+    
+    let listStr = '\n\n以下是可用表情包列表：\n';
+    for (const emoji of emojis) {
+        const meaning = emoji.meaning || '无描述';
+        listStr += `${emoji.id}：${meaning}\n`;
+    }
+    
+    return listStr;
+}
+
+/**
+ * 根据表情ID获取表情图片数据
+ * @param {string} emojiId - 表情ID
+ * @returns {string|null} 表情图片的base64数据，如果不存在则返回null
+ */
+function getEmojiImageById(emojiId) {
+    if (!emojiCache) return null;
+    const emoji = emojiCache[emojiId];
+    return emoji ? emoji.imageData : null;
 }
 
 function toggleManageMode(enable) {
@@ -329,9 +492,9 @@ async function renderMessagesInManageMode() {
     // 预处理历史记录
     const expandedHistory = [];
     for (const msg of history) {
-        if (msg.sender === 'assistant' && msg.type === 'text' && /<(words|action|thought|state)(?:\s+[^>]*)?>/i.test(msg.content)) {
+        if (msg.sender === 'assistant' && msg.type === 'text' && /<(words|action|thought|state|emoji)(?:\s+[^>]*)?>/i.test(msg.content)) {
             const parsedParts = [];
-            const tagRegex = /<(words|action|thought|state)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
+            const tagRegex = /<(words|action|thought|state|emoji)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
             let match;
             while ((match = tagRegex.exec(msg.content)) !== null) {
                 let type = match[1].toLowerCase();
@@ -369,6 +532,14 @@ async function renderMessagesInManageMode() {
             contentHtml = simpleMarkdown(msg.content);
         } else if (msg.type === 'image') {
             contentHtml = `<img src="${msg.content}" style="max-width: 100%; border-radius: 10px;">`;
+        } else if (msg.type === 'emoji') {
+            // 表情包消息：根据ID获取图片显示
+            const emojiImage = getEmojiImageById(msg.content);
+            if (emojiImage) {
+                contentHtml = `<img src="${emojiImage}" class="emoji-message-img" style="max-width: 120px; max-height: 120px; border-radius: 10px;">`;
+            } else {
+                contentHtml = `<span class="emoji-not-found">[表情包: ${msg.content}]</span>`;
+            }
         } else {
             contentHtml = `[暂不支持的消息类型: ${msg.type}]`;
         }
@@ -576,6 +747,7 @@ async function openChat(chatId) {
             <div class="messages" id="chat-messages"></div>
             <div class="input-area">
                 <textarea id="chat-input" placeholder="输入消息..."></textarea>
+                <button id="emoji-btn" class="icon-btn">😊</button>
                 <button id="send-btn">发送</button>
             </div>
         </div>
@@ -584,8 +756,14 @@ async function openChat(chatId) {
     const messagesDiv = document.getElementById('chat-messages');
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
+    const emojiBtn = document.getElementById('emoji-btn');
 
     await renderMessagesInManageMode();
+
+    // 绑定表情包按钮事件
+    emojiBtn.onclick = async () => {
+        await showEmojiSelector(session.contactId);
+    };
 
     sendBtn.onclick = async () => {
         const content = input.value.trim();
@@ -624,6 +802,125 @@ async function openChat(chatId) {
     
     // 创建上下文菜单和编辑对话框（如果不存在）
     createMessageEditComponents();
+}
+
+/**
+ * 显示表情包选择器（显示所有表情包，用户可以发送任意表情）
+ */
+async function showEmojiSelector(contactId) {
+    const emojis = await getAllEmojis();
+    
+    if (emojis.length === 0) {
+        showToast('还没有添加任何表情包');
+        return;
+    }
+
+    // 移除已存在的选择器
+    const existingSelector = document.getElementById('emoji-selector-dialog');
+    if (existingSelector) {
+        document.body.removeChild(existingSelector);
+    }
+
+    const dialog = document.createElement('div');
+    dialog.id = 'emoji-selector-dialog';
+    dialog.className = 'emoji-selector-dialog';
+    dialog.innerHTML = `
+        <div class="emoji-selector-overlay"></div>
+        <div class="emoji-selector-content">
+            <div class="emoji-selector-handle"></div>
+            <div class="emoji-selector-header">
+                <h3>选择表情包</h3>
+                <button class="close-btn">×</button>
+            </div>
+            <div class="emoji-selector-grid">
+                ${emojis.map(emoji => `
+                    <div class="emoji-selector-item" data-id="${emoji.id}">
+                        <img src="${emoji.imageData}" alt="${emoji.meaning || '表情'}">
+                        <div class="emoji-meaning">${emoji.meaning || ''}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    // 绑定事件
+    const closeBtn = dialog.querySelector('.close-btn');
+    const overlay = dialog.querySelector('.emoji-selector-overlay');
+    
+    const closeDialog = () => {
+        dialog.classList.remove('visible');
+        setTimeout(() => {
+            if (document.body.contains(dialog)) {
+                document.body.removeChild(dialog);
+            }
+        }, 300);
+    };
+
+    closeBtn.onclick = closeDialog;
+    overlay.onclick = closeDialog;
+
+    // 表情点击事件
+    dialog.querySelectorAll('.emoji-selector-item').forEach(item => {
+        item.onclick = async () => {
+            const emojiId = item.dataset.id;
+            await sendEmojiMessage(emojiId, contactId);
+            closeDialog();
+        };
+    });
+
+    // 显示动画
+    requestAnimationFrame(() => {
+        dialog.classList.add('visible');
+    });
+}
+
+/**
+ * 发送表情包消息
+ * 如果发送的表情包不在角色权限内，自动为角色授权
+ */
+async function sendEmojiMessage(emojiId, contactId) {
+    if (!currentChatId) return;
+
+    const session = await db.get(STORES.SESSIONS, currentChatId);
+    if (!session) return;
+
+    const contact = await db.get(STORES.CONTACTS, contactId);
+    if (!contact) return;
+
+    // 检查表情包是否在角色权限内，如果不在则自动授权
+    const isAvailable = await isEmojiAvailableForContact(emojiId, contactId);
+    if (!isAvailable) {
+        await authorizeEmojiForContact(emojiId, contactId);
+        // 获取表情包信息用于显示提示
+        const emoji = emojiCache[emojiId];
+        const emojiName = emoji?.meaning || emojiId;
+        showToast(`已为 ${contact.name} 开通表情包: ${emojiName}`);
+    }
+
+    const now = getCurrentTimestamp();
+    const userMsg = {
+        chatId: currentChatId,
+        contactId: contactId,
+        sender: 'user',
+        type: 'emoji',
+        content: emojiId,
+        status: 'normal',
+        timestamp: now
+    };
+
+    await db.put(STORES.CHAT_HISTORY, userMsg);
+    
+    // 更新会话最后活跃时间和最后消息
+    session.lastActive = now;
+    session.lastMessage = '[表情包]';
+    await db.put(STORES.SESSIONS, session);
+
+    await Logger.log(LOG_TYPES.ACTION, `User sent emoji to ${contact.name}: ${emojiId}`);
+
+    await renderMessagesInManageMode();
+    queueAIResponse(session, contact);
 }
 
 /**
@@ -1136,6 +1433,12 @@ async function processAIResponse(session, contact) {
             systemContent += `\n\n系统信息：\n${systemInfo.trim()}`;
         }
 
+        // 添加可用表情包列表
+        const emojiList = await buildEmojiListForPrompt(contact.id);
+        if (emojiList) {
+            systemContent += emojiList;
+        }
+
         apiMessages.push({ role: 'system', content: systemContent });
         apiMessages.push(...recent.map(m => {
             let content = m.content;
@@ -1209,6 +1512,7 @@ async function processAIResponse(session, contact) {
                             else if (child.tagName === 'action') type = 'action';
                             else if (child.tagName === 'thought') type = 'thought';
                             else if (child.tagName === 'state') type = 'state';
+                            else if (child.tagName === 'emoji') type = 'emoji';
                             
                             if (child.textContent.trim()) {
                                 parsedMessages.push({
@@ -1244,7 +1548,7 @@ async function processAIResponse(session, contact) {
 
             // 如果 DOM 解析失败 (parsedMessages 为空)，尝试 Regex 解析
             if (parsedMessages.length === 0) {
-                const tagRegex = /<(words|action|thought|state)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
+                const tagRegex = /<(words|action|thought|state|emoji)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
                 let match;
                 while ((match = tagRegex.exec(aiContent)) !== null) {
                     let type = match[1].toLowerCase();

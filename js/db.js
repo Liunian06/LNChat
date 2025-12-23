@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'LNChatDB';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 export const STORES = {
     CONTACTS: 'contacts',
@@ -17,7 +17,9 @@ export const STORES = {
     MEMORIES: 'memories',
     USER_PERSONAS: 'user_personas',
     EXCHANGE_DIARIES: 'exchange_diaries',
-    EXCHANGE_DIARY_ENTRIES: 'exchange_diary_entries'
+    EXCHANGE_DIARY_ENTRIES: 'exchange_diary_entries',
+    EMOJI_LIBRARIES: 'emoji_libraries',
+    EMOJIS: 'emojis'
 };
 
 class LNChatDB {
@@ -115,6 +117,19 @@ class LNChatDB {
                 if (!db.objectStoreNames.contains(STORES.EXCHANGE_DIARY_ENTRIES)) {
                     const exchangeEntryStore = db.createObjectStore(STORES.EXCHANGE_DIARY_ENTRIES, { keyPath: 'id' });
                     exchangeEntryStore.createIndex('diaryId', 'diaryId', { unique: false });
+                }
+
+                // 表情库存储
+                if (!db.objectStoreNames.contains(STORES.EMOJI_LIBRARIES)) {
+                    const emojiLibraryStore = db.createObjectStore(STORES.EMOJI_LIBRARIES, { keyPath: 'id' });
+                    emojiLibraryStore.createIndex('type', 'type', { unique: false }); // 'global' 或 'private'
+                    emojiLibraryStore.createIndex('contactId', 'contactId', { unique: false }); // 独立表情库关联的角色
+                }
+
+                // 表情存储
+                if (!db.objectStoreNames.contains(STORES.EMOJIS)) {
+                    const emojiStore = db.createObjectStore(STORES.EMOJIS, { keyPath: 'id' });
+                    emojiStore.createIndex('libraryId', 'libraryId', { unique: false });
                 }
             };
 
