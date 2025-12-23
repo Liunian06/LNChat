@@ -421,6 +421,10 @@ body {
     gap: 18px;
 }
 
+.messages.manage-mode {
+    padding-bottom: 80px;
+}
+
 .message {
     max-width: 82%;
     padding: 12px 16px;
@@ -430,6 +434,60 @@ body {
     line-height: 1.5;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.message.manage-mode {
+    max-width: 100%;
+}
+
+.message .message-checkbox-wrapper {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.message.manage-mode .message-checkbox-wrapper {
+    width: 24px;
+}
+
+.message .message-checkbox-wrapper .custom-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--glass-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.message.selected .message-checkbox-wrapper .custom-checkbox {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.message.selected .message-checkbox-wrapper .custom-checkbox::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.message .message-content-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+
+.message.selected {
+    background: rgba(33, 150, 243, 0.2) !important;
+    border-color: var(--primary-color) !important;
 }
 
 .message.user {
@@ -509,15 +567,17 @@ body {
     max-width: 100%;
 }
 
-.message.folded .msg-content {
-    opacity: 0.6;
-    cursor: pointer;
-}
-
-.folded-msg {
-    font-size: 13px;
-    color: var(--primary-color);
-    text-decoration: underline;
+/* 折叠标签样式 */
+.folded-tag {
+    display: inline-block;
+    font-size: 11px;
+    color: #ffc107;
+    background: rgba(255, 193, 7, 0.15);
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-left: 6px;
+    font-weight: 500;
+    opacity: 0.8;
 }
 
 .input-area {
@@ -844,12 +904,40 @@ input[type=range]::-webkit-slider-thumb {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+    flex: 1;
+}
+
+.action-btn.fold {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.action-btn.fold:active {
+    background: rgba(255, 193, 7, 0.4);
+}
+
+.action-btn.fold:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-btn.unfold {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.action-btn.unfold:active {
+    background: rgba(76, 175, 80, 0.4);
+}
+
+.action-btn.unfold:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .action-btn.delete {
     background: rgba(244, 67, 54, 0.2);
     color: #ff5252;
-    width: 100%;
 }
 
 .action-btn.delete:active {
@@ -975,4 +1063,633 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(22px);
+}
+
+/* 消息上下文菜单 */
+.message-context-menu {
+  position: fixed;
+  background: rgba(40, 40, 40, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 8px 0;
+  z-index: 3000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  min-width: 150px;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.message-context-menu.visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.context-menu-item {
+  padding: 12px 20px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.context-menu-item:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.context-menu-item.danger {
+  color: #ff5252;
+}
+
+/* 消息编辑对话框 */
+.message-edit-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 3500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.message-edit-dialog.visible {
+  display: flex;
+}
+
+.edit-dialog-content {
+  background: rgba(40, 40, 40, 0.98);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 90%;
+  width: 450px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.edit-dialog-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: white;
+}
+
+.edit-dialog-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  font-size: 15px;
+  color: white;
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+  font-family: var(--custom-font);
+}
+
+.edit-dialog-textarea:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.edit-dialog-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.edit-dialog-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+}
+
+.edit-dialog-btn.primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.edit-dialog-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid var(--glass-border);
+}
+
+.edit-dialog-btn:active {
+  transform: scale(0.98);
+  opacity: 0.8;
+}
+
+/* 确认对话框（带不再提示选项） */
+.confirm-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 3600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.confirm-dialog.visible {
+  display: flex;
+}
+
+.confirm-dialog-content {
+  background: rgba(40, 40, 40, 0.98);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 90%;
+  width: 400px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-dialog-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: white;
+}
+
+.confirm-dialog-message {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.confirm-dialog-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.confirm-dialog-checkbox:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.confirm-dialog-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.confirm-dialog-checkbox label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-dialog-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+}
+
+.confirm-dialog-btn.danger {
+  background: rgba(244, 67, 54, 0.8);
+  color: white;
+}
+
+.confirm-dialog-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid var(--glass-border);
+}
+
+.confirm-dialog-btn:active {
+  transform: scale(0.98);
+  opacity: 0.8;
+}
+
+/* 横线本日记样式 - 书本布局 */
+.diary-notebook {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+}
+
+/* 书本容器 */
+.diary-book-container {
+  position: relative;
+  perspective: 2000px;
+  min-height: 650px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 书本主体 */
+.diary-book {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  height: 600px;
+  display: flex;
+  transform-style: preserve-3d;
+}
+
+/* 下层页面（预加载的下一页） */
+.diary-page-underneath {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.diary-page-underneath .diary-page-left,
+.diary-page-underneath .diary-page-right {
+  position: relative;
+}
+
+/* 左页（固定的书脊侧） */
+.diary-page-left {
+  width: 50%;
+  height: 100%;
+  background: #faf8f3;
+  border: 1px solid rgba(200, 200, 200, 0.4);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  box-shadow:
+    -2px 0 10px rgba(0, 0, 0, 0.2),
+    inset 0 0 50px rgba(0, 0, 0, 0.02);
+  padding: 40px 30px 40px 40px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* 书脊（中间的装订线） */
+.diary-book-spine {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom,
+    rgba(100, 100, 100, 0.4) 0%,
+    rgba(50, 50, 50, 0.6) 50%,
+    rgba(100, 100, 100, 0.4) 100%
+  );
+  box-shadow:
+    0 0 10px rgba(0, 0, 0, 0.5),
+    inset 0 0 5px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+/* 当前页面层 */
+.diary-pages-current {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.diary-pages-current .diary-page-left {
+  position: relative;
+  z-index: 5;
+}
+
+.diary-pages-current .diary-page-right {
+  position: absolute;
+  right: 0;
+  z-index: 15;
+}
+
+/* 右页（可翻页） */
+.diary-page-right {
+  width: 50%;
+  height: 100%;
+  background: #faf8f3;
+  border: 1px solid rgba(200, 200, 200, 0.4);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  box-shadow:
+    2px 0 10px rgba(0, 0, 0, 0.2),
+    inset 0 0 50px rgba(0, 0, 0, 0.02);
+  padding: 40px 40px 40px 30px;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* 右页翻页动画 */
+.diary-pages-current .diary-page-right.flipping {
+  transform: rotateY(-180deg);
+  pointer-events: none;
+}
+
+/* 右页背面（翻过去后看到的） */
+.diary-pages-current .diary-page-right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #faf8f3;
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+  border-radius: 0 8px 8px 0;
+}
+
+.diary-page-header {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(100, 100, 100, 0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.diary-page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 10px;
+  text-shadow: none;
+  line-height: 1.4;
+}
+
+.diary-page-meta {
+  display: flex;
+  gap: 15px;
+  font-size: 13px;
+  color: #7f8c8d;
+  flex-wrap: wrap;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.diary-page-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.diary-page-content {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #34495e;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  position: relative;
+  z-index: 1;
+  text-shadow: none;
+  overflow: hidden;
+  margin-top: 0;
+  letter-spacing: 0.5px;
+  text-align: justify;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 翻页按钮 */
+.diary-nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 30px;
+  gap: 15px;
+}
+
+.diary-nav-btn {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.diary-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.diary-nav-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.diary-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.diary-page-indicator {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ===== 交换日记样式 ===== */
+
+/* 交换日记列表项 */
+.exchange-diary-item {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.exchange-diary-item:hover {
+  transform: translateX(5px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 轮次指示器 */
+.turn-indicator {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.turn-indicator.user-turn {
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+.turn-indicator.ai-turn {
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.5);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+/* 交换日记详情 */
+.exchange-diary-detail {
+  background: transparent;
+}
+
+.exchange-entries-list {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.exchange-entries-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* 日记条目样式 */
+.exchange-entry {
+  animation: slideIn 0.3s ease-out;
+}
+
+.exchange-entry.user {
+  animation-name: slideInRight;
+}
+
+.exchange-entry.ai {
+  animation-name: slideInLeft;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 交换日记操作按钮 */
+.exchange-action-area button {
+  transition: all 0.3s ease;
+}
+
+.exchange-action-area button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.exchange-action-area button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.exchange-action-area button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 生成中动画 */
+.exchange-action-area button:disabled {
+  background: linear-gradient(90deg, #2196F3, #1976D2, #2196F3);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 日记标签栏样式优化 */
+.tab-bar .tab-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-bar .tab-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--primary-color);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.tab-bar .tab-item:hover::after {
+  width: 50%;
 }

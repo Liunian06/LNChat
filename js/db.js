@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'LNChatDB';
-const DB_VERSION = 5;
+const DB_VERSION = 7;
 
 export const STORES = {
     CONTACTS: 'contacts',
@@ -15,7 +15,9 @@ export const STORES = {
     LOGS: 'logs',
     MOMENTS: 'moments',
     MEMORIES: 'memories',
-    USER_PERSONAS: 'user_personas'
+    USER_PERSONAS: 'user_personas',
+    EXCHANGE_DIARIES: 'exchange_diaries',
+    EXCHANGE_DIARY_ENTRIES: 'exchange_diary_entries'
 };
 
 class LNChatDB {
@@ -52,7 +54,13 @@ class LNChatDB {
 
                 // 日记存储
                 if (!db.objectStoreNames.contains(STORES.DIARIES)) {
-                    db.createObjectStore(STORES.DIARIES, { keyPath: 'id' });
+                    const diaryStore = db.createObjectStore(STORES.DIARIES, { keyPath: 'id' });
+                    diaryStore.createIndex('contactId', 'contactId', { unique: false });
+                } else if (oldVersion < 6) {
+                    const diaryStore = event.target.transaction.objectStore(STORES.DIARIES);
+                    if (!diaryStore.indexNames.contains('contactId')) {
+                        diaryStore.createIndex('contactId', 'contactId', { unique: false });
+                    }
                 }
 
                 // 设置存储
@@ -95,6 +103,18 @@ class LNChatDB {
                 // 用户人设存储
                 if (!db.objectStoreNames.contains(STORES.USER_PERSONAS)) {
                     db.createObjectStore(STORES.USER_PERSONAS, { keyPath: 'id' });
+                }
+
+                // 交换日记本存储
+                if (!db.objectStoreNames.contains(STORES.EXCHANGE_DIARIES)) {
+                    const exchangeDiaryStore = db.createObjectStore(STORES.EXCHANGE_DIARIES, { keyPath: 'id' });
+                    exchangeDiaryStore.createIndex('contactId', 'contactId', { unique: false });
+                }
+
+                // 交换日记条目存储
+                if (!db.objectStoreNames.contains(STORES.EXCHANGE_DIARY_ENTRIES)) {
+                    const exchangeEntryStore = db.createObjectStore(STORES.EXCHANGE_DIARY_ENTRIES, { keyPath: 'id' });
+                    exchangeEntryStore.createIndex('diaryId', 'diaryId', { unique: false });
                 }
             };
 

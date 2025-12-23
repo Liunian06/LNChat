@@ -96,6 +96,7 @@ async function renderApiSettings() {
     // 确保有默认值
     if (!settings.mainPresetId) settings.mainPresetId = settings.presets[0].id;
     if (!settings.funcPresetId) settings.funcPresetId = 'same_as_main'; // 特殊值：跟随主API
+    if (!settings.exchangeDiaryPresetId) settings.exchangeDiaryPresetId = 'same_as_main'; // 交换日记API
 
     // 当前正在编辑的预设
     let editingPreset = settings.presets.find(p => p.id === settings.activePresetId) || settings.presets[0];
@@ -103,6 +104,7 @@ async function renderApiSettings() {
     const renderUI = () => {
         const mainPresetName = settings.presets.find(p => p.id === settings.mainPresetId)?.name || '未知预设';
         const funcPresetName = settings.funcPresetId === 'same_as_main' ? '跟随主 API' : (settings.presets.find(p => p.id === settings.funcPresetId)?.name || '未知预设');
+        const exchangeDiaryPresetName = settings.exchangeDiaryPresetId === 'same_as_main' ? '跟随主 API' : (settings.presets.find(p => p.id === settings.exchangeDiaryPresetId)?.name || '未知预设');
 
         container.innerHTML = `
             <div class="settings-container" style="padding: 20px">
@@ -147,6 +149,27 @@ async function renderApiSettings() {
                             </div>
                         </div>
                         <p style="font-size:12px; color:var(--text-secondary); margin-top:5px">用于日记分析、记忆整理等后台功能</p>
+                    </div>
+
+                    <div class="input-group">
+                        <label>📝 交换日记 API</label>
+                        <div style="position:relative;">
+                            <div id="exchange-diary-preset-trigger" style="padding:14px; border:1px solid var(--glass-border); background:rgba(255, 255, 255, 0.08); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <span>${exchangeDiaryPresetName}</span>
+                                <span style="font-size:12px; opacity:0.7">▼</span>
+                            </div>
+                            <div id="exchange-diary-preset-list" style="position:absolute; top:100%; left:0; right:0; z-index:101; margin-top:5px; max-height:200px; overflow-y:auto; display:none; background:rgba(30,30,30,0.95); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:14px; border:1px solid var(--glass-border); box-shadow:var(--shadow);">
+                                <div class="exchange-diary-preset-option" data-id="same_as_main" style="padding:12px 15px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px; color:white; ${settings.exchangeDiaryPresetId === 'same_as_main' ? 'background:rgba(255,255,255,0.1);' : ''}">
+                                    跟随主 API
+                                </div>
+                                ${settings.presets.map(p => `
+                                    <div class="exchange-diary-preset-option" data-id="${p.id}" style="padding:12px 15px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px; color:white; ${p.id === settings.exchangeDiaryPresetId ? 'background:rgba(255,255,255,0.1);' : ''}">
+                                        ${p.name}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <p style="font-size:12px; color:var(--text-secondary); margin-top:5px">用于交换日记功能的专用接口（可独立设置高质量模型）</p>
                     </div>
                 </section>
 
@@ -230,7 +253,19 @@ async function renderApiSettings() {
             };
         });
 
-        // 3. 编辑预设下拉
+        // 3. 交换日记 API 下拉
+        const exchangeDiaryTrigger = document.getElementById('exchange-diary-preset-trigger');
+        const exchangeDiaryList = document.getElementById('exchange-diary-preset-list');
+        setupDropdown(exchangeDiaryTrigger, exchangeDiaryList);
+        exchangeDiaryList.querySelectorAll('.exchange-diary-preset-option').forEach(item => {
+            item.onclick = async () => {
+                settings.exchangeDiaryPresetId = item.dataset.id;
+                await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+                renderUI();
+            };
+        });
+
+        // 4. 编辑预设下拉
         const editTrigger = document.getElementById('preset-dropdown-trigger');
         const editList = document.getElementById('preset-list-container');
         setupDropdown(editTrigger, editList);
@@ -248,7 +283,7 @@ async function renderApiSettings() {
             trigger.onclick = (e) => {
                 e.stopPropagation();
                 // 关闭其他打开的下拉框
-                [mainList, funcList, editList].forEach(l => {
+                [mainList, funcList, exchangeDiaryList, editList].forEach(l => {
                     if (l !== list) l.style.display = 'none';
                 });
                 list.style.display = list.style.display === 'none' ? 'block' : 'none';
@@ -257,7 +292,7 @@ async function renderApiSettings() {
 
         // 点击空白处关闭所有下拉框
         document.addEventListener('click', () => {
-            [mainList, funcList, editList].forEach(l => {
+            [mainList, funcList, exchangeDiaryList, editList].forEach(l => {
                 if (l) l.style.display = 'none';
             });
         }, { once: true });
@@ -289,9 +324,10 @@ async function renderApiSettings() {
             }
             if (!confirm(`确定删除预设 "${editingPreset.name}" 吗？`)) return;
             
-            // 如果删除的是当前选中的主/副 API，重置为默认
+            // 如果删除的是当前选中的主/副/交换日记 API，重置为默认
             if (settings.mainPresetId === editingPreset.id) settings.mainPresetId = settings.presets.find(p => p.id !== editingPreset.id).id;
             if (settings.funcPresetId === editingPreset.id) settings.funcPresetId = 'same_as_main';
+            if (settings.exchangeDiaryPresetId === editingPreset.id) settings.exchangeDiaryPresetId = 'same_as_main';
 
             settings.presets = settings.presets.filter(p => p.id !== editingPreset.id);
             settings.activePresetId = settings.presets[0].id;
@@ -2078,6 +2114,7 @@ async function getSettings() {
         activePresetId: 'default',
         mainPresetId: 'default',
         funcPresetId: 'same_as_main',
+        exchangeDiaryPresetId: 'same_as_main',
         presets: [
             {
                 id: 'default',

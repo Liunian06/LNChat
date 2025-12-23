@@ -102,6 +102,26 @@ export async function getDefaultSystemPrompt() {
     return cachedPrompt;
 }
 
+// 获取交换日记提示词 (从文件加载)
+let cachedExchangeDiaryPrompt = null;
+export async function getExchangeDiaryPrompt() {
+    if (cachedExchangeDiaryPrompt !== null) return cachedExchangeDiaryPrompt;
+    
+    try {
+        const response = await fetch('assets/exchange_diary_prompt.txt');
+        if (response.ok) {
+            cachedExchangeDiaryPrompt = await response.text();
+        } else {
+            console.error('Failed to load exchange diary prompt:', response.status);
+            cachedExchangeDiaryPrompt = '';
+        }
+    } catch (error) {
+        console.error('Error loading exchange diary prompt:', error);
+        cachedExchangeDiaryPrompt = '';
+    }
+    return cachedExchangeDiaryPrompt;
+}
+
 // Markdown 转 HTML (使用 marked 库)
 export function simpleMarkdown(text) {
     if (!text) return '';

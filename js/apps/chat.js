@@ -13,6 +13,8 @@ let currentChatId = null;
 let messageTimer = null;
 let isManageMode = false;
 let selectedSessions = new Set();
+let isMessageManageMode = false;
+let selectedMessages = new Set();
 
 export async function init(target, actions) {
     container = target;
@@ -262,35 +264,312 @@ async function createSession(contactId, userPersonaId) {
 }
 
 /**
+ * 更新聊天界面头部
+ */
+function updateChatHeader(contactName) {
+    if (isMessageManageMode) {
+        window.lnChat.appTitle.textContent = selectedMessages.size > 0 ? `已选择 ${selectedMessages.size} 条` : '选择消息';
+        headerActions.innerHTML = `<button id="cancel-message-manage-btn" style="font-size:14px; background:none; border:none; color:white;">完成</button>`;
+        document.getElementById('cancel-message-manage-btn').onclick = () => toggleMessageManageMode(false);
+    } else {
+        window.lnChat.appTitle.textContent = contactName;
+        headerActions.innerHTML = `
+            <button id="message-manage-btn" style="margin-right:10px; font-size:14px; background:none; border:none; color:white;">管理</button>
+            <button id="clear-chat-btn">🗑️</button>
+        `;
+        document.getElementById('message-manage-btn').onclick = () => toggleMessageManageMode(true);
+        document.getElementById('clear-chat-btn').onclick = async () => {
+            if (confirm('确定清空当前会话的聊天记录吗？')) {
+                const history = await db.getChatHistory(currentChatId);
+                for (const msg of history) {
+                    await db.delete(STORES.CHAT_HISTORY, msg.id);
+                }
+                openChat(currentChatId);
+            }
+        };
+    }
+}
+
+/**
+ * 切换消息管理模式
+ */
+function toggleMessageManageMode(enable) {
+    isMessageManageMode = enable;
+    if (!enable) {
+        selectedMessages.clear();
+    }
+    
+    const session = db.get(STORES.SESSIONS, currentChatId).then(async (session) => {
+        if (session) {
+            const contact = await db.get(STORES.CONTACTS, session.contactId);
+            if (contact) {
+                updateChatHeader(contact.name);
+                renderMessagesInManageMode();
+            }
+        }
+    });
+}
+
+/**
+ * 在管理模式下重新渲染消息
+ */
+async function renderMessagesInManageMode() {
+    const messagesDiv = document.getElementById('chat-messages');
+    if (!messagesDiv) return;
+    
+    const history = await db.getChatHistory(currentChatId);
+    
+    // 更新容器类名
+    if (isMessageManageMode) {
+        messagesDiv.classList.add('manage-mode');
+    } else {
+        messagesDiv.classList.remove('manage-mode');
+    }
+    
+    // 预处理历史记录
+    const expandedHistory = [];
+    for (const msg of history) {
+        if (msg.sender === 'assistant' && msg.type === 'text' && /<(words|action|thought|state)(?:\s+[^>]*)?>/i.test(msg.content)) {
+            const parsedParts = [];
+            const tagRegex = /<(words|action|thought|state)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
+            let match;
+            while ((match = tagRegex.exec(msg.content)) !== null) {
+                let type = match[1].toLowerCase();
+                if (type === 'words') type = 'text';
+                parsedParts.push({
+                    type: type,
+                    content: match[2].trim()
+                });
+            }
+            
+            if (parsedParts.length > 0) {
+                parsedParts.forEach((part, index) => {
+                    expandedHistory.push({
+                        ...msg,
+                        virtualId: `${msg.id}_${index}`,
+                        type: part.type,
+                        content: part.content
+                    });
+                });
+            } else {
+                expandedHistory.push(msg);
+            }
+        } else {
+            expandedHistory.push(msg);
+        }
+    }
+    
+    messagesDiv.innerHTML = expandedHistory.map(msg => {
+        if (msg.status === 'recalled') {
+            return `<div class="message system"><div class="message-content-wrapper"><div class="msg-content">消息已撤回</div></div></div>`;
+        }
+        
+        let contentHtml = '';
+        if (msg.type === 'text' || msg.type === 'action' || msg.type === 'thought' || msg.type === 'state') {
+            contentHtml = simpleMarkdown(msg.content);
+        } else if (msg.type === 'image') {
+            contentHtml = `<img src="${msg.content}" style="max-width: 100%; border-radius: 10px;">`;
+        } else {
+            contentHtml = `[暂不支持的消息类型: ${msg.type}]`;
+        }
+        
+        // 折叠的消息显示完整内容，但添加标签提示
+        let foldedTag = '';
+        if (msg.status === 'folded') {
+            foldedTag = `<span class="folded-tag">（该消息已被折叠）</span>`;
+        }
+        
+        let timeDisplay = '';
+        if (typeof msg.timestamp === 'number') {
+            timeDisplay = formatTime(msg.timestamp * 1000);
+        } else {
+            timeDisplay = formatTime(msg.timestamp);
+        }
+        
+        const isSelected = selectedMessages.has(msg.id);
+        
+        return `
+            <div class="message ${msg.sender} ${msg.type} ${msg.status} ${isMessageManageMode ? 'manage-mode' : ''} ${isSelected ? 'selected' : ''}"
+                 data-id="${msg.virtualId || msg.id}" data-real-id="${msg.id}">
+                <div class="message-checkbox-wrapper">
+                    <div class="custom-checkbox"></div>
+                </div>
+                <div class="message-content-wrapper">
+                    <div class="msg-content">${contentHtml}${foldedTag}</div>
+                    <div class="msg-time">${timeDisplay}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // 添加底部操作栏
+    let bottomBar = document.querySelector('.chat-container .bottom-action-bar');
+    if (!bottomBar) {
+        bottomBar = document.createElement('div');
+        bottomBar.className = 'bottom-action-bar';
+        bottomBar.innerHTML = `
+            <button class="action-btn fold" id="batch-fold-messages-btn" disabled>
+                折叠 (0)
+            </button>
+            <button class="action-btn unfold" id="batch-unfold-messages-btn" disabled>
+                展开 (0)
+            </button>
+            <button class="action-btn delete" id="batch-delete-messages-btn" disabled>
+                删除 (0)
+            </button>
+        `;
+        document.querySelector('.chat-container').appendChild(bottomBar);
+    }
+    
+    if (isMessageManageMode) {
+        bottomBar.classList.add('visible');
+        const foldBtn = document.getElementById('batch-fold-messages-btn');
+        const unfoldBtn = document.getElementById('batch-unfold-messages-btn');
+        const deleteBtn = document.getElementById('batch-delete-messages-btn');
+        if (foldBtn) {
+            foldBtn.disabled = selectedMessages.size === 0;
+            foldBtn.textContent = `折叠 (${selectedMessages.size})`;
+        }
+        if (unfoldBtn) {
+            unfoldBtn.disabled = selectedMessages.size === 0;
+            unfoldBtn.textContent = `展开 (${selectedMessages.size})`;
+        }
+        if (deleteBtn) {
+            deleteBtn.disabled = selectedMessages.size === 0;
+            deleteBtn.textContent = `删除 (${selectedMessages.size})`;
+        }
+    } else {
+        bottomBar.classList.remove('visible');
+    }
+    
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    // 绑定事件
+    messagesDiv.querySelectorAll('.message').forEach(el => {
+        if (el.classList.contains('system')) {
+            return;
+        }
+        
+        if (isMessageManageMode) {
+            // 管理模式：点击选择/取消选择
+            el.onclick = () => {
+                const msgId = parseInt(el.dataset.realId);
+                if (selectedMessages.has(msgId)) {
+                    selectedMessages.delete(msgId);
+                } else {
+                    selectedMessages.add(msgId);
+                }
+                renderMessagesInManageMode();
+            };
+        } else {
+            // 正常模式：长按/右键菜单
+            if (el.classList.contains('assistant') || el.classList.contains('user')) {
+                let pressTimer = null;
+                
+                el.addEventListener('touchstart', (e) => {
+                    pressTimer = setTimeout(() => {
+                        e.preventDefault();
+                        showMessageContextMenu(el, e.touches[0].clientX, e.touches[0].clientY);
+                    }, 500);
+                });
+                
+                el.addEventListener('touchend', () => {
+                    clearTimeout(pressTimer);
+                });
+                
+                el.addEventListener('touchmove', () => {
+                    clearTimeout(pressTimer);
+                });
+                
+                el.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showMessageContextMenu(el, e.clientX, e.clientY);
+                });
+            }
+            
+        }
+    });
+    
+    // 绑定批量折叠按钮
+    const foldBtn = document.getElementById('batch-fold-messages-btn');
+    if (foldBtn) {
+        foldBtn.onclick = async () => {
+            if (selectedMessages.size === 0) return;
+            
+            const count = selectedMessages.size;
+            for (const msgId of selectedMessages) {
+                const msg = await db.get(STORES.CHAT_HISTORY, msgId);
+                if (msg) {
+                    msg.status = 'folded';
+                    await db.put(STORES.CHAT_HISTORY, msg);
+                }
+            }
+            selectedMessages.clear();
+            showToast(`已折叠 ${count} 条消息`);
+            renderMessagesInManageMode();
+        };
+    }
+    
+    // 绑定批量展开按钮
+    const unfoldBtn = document.getElementById('batch-unfold-messages-btn');
+    if (unfoldBtn) {
+        unfoldBtn.onclick = async () => {
+            if (selectedMessages.size === 0) return;
+            
+            const count = selectedMessages.size;
+            for (const msgId of selectedMessages) {
+                const msg = await db.get(STORES.CHAT_HISTORY, msgId);
+                if (msg) {
+                    msg.status = 'normal';
+                    await db.put(STORES.CHAT_HISTORY, msg);
+                }
+            }
+            selectedMessages.clear();
+            showToast(`已展开 ${count} 条消息`);
+            renderMessagesInManageMode();
+        };
+    }
+    
+    // 绑定批量删除按钮
+    const deleteBtn = document.getElementById('batch-delete-messages-btn');
+    if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+            if (selectedMessages.size === 0) return;
+            
+            if (confirm(`确定删除选中的 ${selectedMessages.size} 条消息吗？`)) {
+                for (const msgId of selectedMessages) {
+                    await db.delete(STORES.CHAT_HISTORY, msgId);
+                }
+                selectedMessages.clear();
+                showToast('消息已删除');
+                renderMessagesInManageMode();
+            }
+        };
+    }
+}
+
+/**
  * 聊天窗口
  */
 async function openChat(chatId) {
     currentChatId = chatId;
+    isMessageManageMode = false;
+    selectedMessages.clear();
+    
     const session = await db.get(STORES.SESSIONS, chatId);
     if (!session) return renderMainSessionList();
     
     const contact = await db.get(STORES.CONTACTS, session.contactId);
     
-    window.lnChat.appTitle.textContent = contact.name;
-    headerActions.innerHTML = `
-        <button id="clear-chat-btn">🗑️</button>
-    `;
-
     const originalBack = window.lnChat.backBtn.onclick;
     window.lnChat.backBtn.onclick = () => {
         window.lnChat.backBtn.onclick = originalBack;
+        isMessageManageMode = false;
+        selectedMessages.clear();
         renderMainSessionList();
     };
-
-    document.getElementById('clear-chat-btn').onclick = async () => {
-        if (confirm('确定清空当前会话的聊天记录吗？')) {
-            const history = await db.getChatHistory(chatId);
-            for (const msg of history) {
-                await db.delete(STORES.CHAT_HISTORY, msg.id);
-            }
-            openChat(chatId);
-        }
-    };
+    
+    updateChatHeader(contact.name);
 
     container.innerHTML = `
         <div class="chat-container">
@@ -306,93 +585,7 @@ async function openChat(chatId) {
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
 
-    const renderMessages = async () => {
-        const history = await db.getChatHistory(chatId);
-        
-        // 预处理历史记录，展开未正确解析的消息
-        const expandedHistory = [];
-        for (const msg of history) {
-            // 检查是否是包含 XML 标签的 Assistant 文本消息
-            if (msg.sender === 'assistant' && msg.type === 'text' && /<(words|action|thought|state)(?:\s+[^>]*)?>/i.test(msg.content)) {
-                const parsedParts = [];
-                const tagRegex = /<(words|action|thought|state)(?:\s+[^>]*)?>(.*?)<\/\1>/gis;
-                let match;
-                while ((match = tagRegex.exec(msg.content)) !== null) {
-                    let type = match[1].toLowerCase();
-                    if (type === 'words') type = 'text';
-                    parsedParts.push({
-                        type: type,
-                        content: match[2].trim()
-                    });
-                }
-                
-                if (parsedParts.length > 0) {
-                    parsedParts.forEach((part, index) => {
-                        expandedHistory.push({
-                            ...msg,
-                            virtualId: `${msg.id}_${index}`,
-                            type: part.type,
-                            content: part.content
-                        });
-                    });
-                } else {
-                    expandedHistory.push(msg);
-                }
-            } else {
-                expandedHistory.push(msg);
-            }
-        }
-
-        messagesDiv.innerHTML = expandedHistory.map(msg => {
-            if (msg.status === 'recalled') {
-                return `<div class="message system"><div class="msg-content">消息已撤回</div></div>`;
-            }
-            
-            let contentHtml = '';
-            if (msg.type === 'text' || msg.type === 'action' || msg.type === 'thought' || msg.type === 'state') {
-                contentHtml = simpleMarkdown(msg.content);
-            } else if (msg.type === 'image') {
-                contentHtml = `<img src="${msg.content}" style="max-width: 100%; border-radius: 10px;">`;
-            } else {
-                contentHtml = `[暂不支持的消息类型: ${msg.type}]`;
-            }
-
-            if (msg.status === 'folded') {
-                contentHtml = `<div class="folded-msg">消息已折叠 (点击展开)</div>`;
-            }
-
-            let timeDisplay = '';
-            if (typeof msg.timestamp === 'number') {
-                timeDisplay = formatTime(msg.timestamp * 1000);
-            } else {
-                timeDisplay = formatTime(msg.timestamp);
-            }
-
-            return `
-                <div class="message ${msg.sender} ${msg.type} ${msg.status}" data-id="${msg.virtualId || msg.id}">
-                    <div class="msg-content">${contentHtml}</div>
-                    <div class="msg-time">${timeDisplay}</div>
-                </div>
-            `;
-        }).join('');
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-        messagesDiv.querySelectorAll('.message').forEach(el => {
-            el.onclick = async () => {
-                const id = parseInt(el.dataset.id);
-                const msg = await db.get(STORES.CHAT_HISTORY, id);
-                if (msg && msg.status === 'folded') {
-                    if (confirm('是否展开此消息？')) {
-                        msg.status = 'normal';
-                        await db.put(STORES.CHAT_HISTORY, msg);
-                        renderMessages();
-                    }
-                }
-            };
-        });
-    };
-
-    await renderMessages();
+    await renderMessagesInManageMode();
 
     sendBtn.onclick = async () => {
         const content = input.value.trim();
@@ -418,7 +611,7 @@ async function openChat(chatId) {
 
         await Logger.log(LOG_TYPES.ACTION, `User sent message to ${contact.name}: ${content}`);
 
-        await renderMessages();
+        await renderMessagesInManageMode();
         queueAIResponse(session, contact);
     };
 
@@ -428,6 +621,399 @@ async function openChat(chatId) {
             sendBtn.click();
         }
     };
+    
+    // 创建上下文菜单和编辑对话框（如果不存在）
+    createMessageEditComponents();
+}
+
+/**
+ * 创建消息编辑相关的UI组件
+ */
+function createMessageEditComponents() {
+    // 创建上下文菜单
+    if (!document.getElementById('message-context-menu')) {
+        const contextMenu = document.createElement('div');
+        contextMenu.id = 'message-context-menu';
+        contextMenu.className = 'message-context-menu';
+        contextMenu.innerHTML = `
+            <div class="context-menu-item" data-action="edit">
+                <span>✏️</span>
+                <span>编辑消息</span>
+            </div>
+            <div class="context-menu-item" data-action="reroll">
+                <span>🔄</span>
+                <span>重新生成</span>
+            </div>
+            <div class="context-menu-item" data-action="fold">
+                <span>📁</span>
+                <span>折叠消息</span>
+            </div>
+            <div class="context-menu-item danger" data-action="delete">
+                <span>🗑️</span>
+                <span>删除消息</span>
+            </div>
+        `;
+        document.body.appendChild(contextMenu);
+        
+        // 点击菜单外部关闭
+        document.addEventListener('click', (e) => {
+            if (!contextMenu.contains(e.target)) {
+                contextMenu.classList.remove('visible');
+            }
+        });
+    }
+    
+    // 创建编辑对话框
+    if (!document.getElementById('message-edit-dialog')) {
+        const editDialog = document.createElement('div');
+        editDialog.id = 'message-edit-dialog';
+        editDialog.className = 'message-edit-dialog';
+        editDialog.innerHTML = `
+            <div class="edit-dialog-content">
+                <div class="edit-dialog-header">编辑消息</div>
+                <textarea class="edit-dialog-textarea" id="edit-message-textarea"></textarea>
+                <div class="edit-dialog-actions">
+                    <button class="edit-dialog-btn secondary" id="edit-cancel-btn">取消</button>
+                    <button class="edit-dialog-btn primary" id="edit-save-btn">保存</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(editDialog);
+        
+        // 点击背景关闭
+        editDialog.addEventListener('click', (e) => {
+            if (e.target === editDialog) {
+                editDialog.classList.remove('visible');
+            }
+        });
+    }
+    
+    // 创建确认对话框
+    if (!document.getElementById('confirm-dialog')) {
+        const confirmDialog = document.createElement('div');
+        confirmDialog.id = 'confirm-dialog';
+        confirmDialog.className = 'confirm-dialog';
+        confirmDialog.innerHTML = `
+            <div class="confirm-dialog-content">
+                <div class="confirm-dialog-header" id="confirm-dialog-title">确认操作</div>
+                <div class="confirm-dialog-message" id="confirm-dialog-message"></div>
+                <div class="confirm-dialog-checkbox" id="confirm-dialog-checkbox-wrapper" style="display: none;">
+                    <input type="checkbox" id="confirm-dialog-checkbox">
+                    <label for="confirm-dialog-checkbox">不再提示此消息</label>
+                </div>
+                <div class="confirm-dialog-actions">
+                    <button class="confirm-dialog-btn secondary" id="confirm-dialog-cancel">取消</button>
+                    <button class="confirm-dialog-btn danger" id="confirm-dialog-confirm">确认</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(confirmDialog);
+        
+        // 点击背景关闭
+        confirmDialog.addEventListener('click', (e) => {
+            if (e.target === confirmDialog) {
+                confirmDialog.classList.remove('visible');
+            }
+        });
+    }
+}
+
+/**
+ * 显示消息上下文菜单
+ */
+function showMessageContextMenu(messageElement, x, y) {
+    const contextMenu = document.getElementById('message-context-menu');
+    if (!contextMenu) return;
+    
+    const messageId = parseInt(messageElement.dataset.realId);
+    const isUserMessage = messageElement.classList.contains('user');
+    
+    // 移除旧的事件监听器并添加新的
+    const menuItems = contextMenu.querySelectorAll('.context-menu-item');
+    menuItems.forEach(item => {
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+    });
+    
+    // 重新获取菜单项并绑定事件
+    const newMenuItems = contextMenu.querySelectorAll('.context-menu-item');
+    newMenuItems.forEach(item => {
+        item.onclick = async () => {
+            const action = item.dataset.action;
+            contextMenu.classList.remove('visible');
+            
+            if (action === 'edit') {
+                await showEditMessageDialog(messageId);
+            } else if (action === 'delete') {
+                await deleteMessage(messageId);
+            } else if (action === 'reroll') {
+                await handleReroll(messageId, isUserMessage);
+            } else if (action === 'fold') {
+                await foldMessage(messageId);
+            }
+        };
+    });
+    
+    // 显示菜单
+    contextMenu.style.left = x + 'px';
+    contextMenu.style.top = y + 'px';
+    contextMenu.classList.add('visible');
+    
+    // 确保菜单不超出屏幕
+    setTimeout(() => {
+        const rect = contextMenu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            contextMenu.style.left = (x - rect.width) + 'px';
+        }
+        if (rect.bottom > window.innerHeight) {
+            contextMenu.style.top = (y - rect.height) + 'px';
+        }
+    }, 0);
+}
+
+/**
+ * 显示编辑消息对话框
+ */
+async function showEditMessageDialog(messageId) {
+    const message = await db.get(STORES.CHAT_HISTORY, messageId);
+    if (!message) {
+        showToast('消息不存在');
+        return;
+    }
+    
+    const editDialog = document.getElementById('message-edit-dialog');
+    const textarea = document.getElementById('edit-message-textarea');
+    const saveBtn = document.getElementById('edit-save-btn');
+    const cancelBtn = document.getElementById('edit-cancel-btn');
+    
+    if (!editDialog || !textarea || !saveBtn || !cancelBtn) return;
+    
+    // 设置当前消息内容
+    textarea.value = message.content;
+    editDialog.classList.add('visible');
+    textarea.focus();
+    
+    // 移除旧的事件监听器
+    const newSaveBtn = saveBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    
+    // 保存按钮
+    newSaveBtn.onclick = async () => {
+        const newContent = textarea.value.trim();
+        if (!newContent) {
+            showToast('消息内容不能为空');
+            return;
+        }
+        
+        if (newContent === message.content) {
+            editDialog.classList.remove('visible');
+            return;
+        }
+        
+        // 更新消息
+        message.content = newContent;
+        await db.put(STORES.CHAT_HISTORY, message);
+        
+        // 重新渲染消息
+        if (currentChatId === message.chatId) {
+            await openChat(message.chatId);
+        }
+        
+        editDialog.classList.remove('visible');
+        showToast('消息已更新');
+    };
+    
+    // 取消按钮
+    newCancelBtn.onclick = () => {
+        editDialog.classList.remove('visible');
+    };
+}
+
+/**
+ * 删除消息
+ */
+async function deleteMessage(messageId) {
+    if (!confirm('确定要删除这条消息吗？')) {
+        return;
+    }
+    
+    const message = await db.get(STORES.CHAT_HISTORY, messageId);
+    if (!message) {
+        showToast('消息不存在');
+        return;
+    }
+    
+    await db.delete(STORES.CHAT_HISTORY, messageId);
+    
+    // 重新渲染消息
+    if (currentChatId === message.chatId) {
+        await openChat(message.chatId);
+    }
+    
+    showToast('消息已删除');
+}
+
+/**
+ * 折叠消息
+ */
+async function foldMessage(messageId) {
+    const message = await db.get(STORES.CHAT_HISTORY, messageId);
+    if (!message) {
+        showToast('消息不存在');
+        return;
+    }
+    
+    // 将消息状态设置为折叠
+    message.status = 'folded';
+    await db.put(STORES.CHAT_HISTORY, message);
+    
+    // 重新渲染消息
+    if (currentChatId === message.chatId) {
+        await renderMessagesInManageMode();
+    }
+    
+    showToast('消息已折叠');
+}
+
+/**
+ * 显示确认对话框
+ */
+function showConfirmDialog(title, message, showCheckbox = false, checkboxKey = '') {
+    return new Promise((resolve) => {
+        const dialog = document.getElementById('confirm-dialog');
+        const titleEl = document.getElementById('confirm-dialog-title');
+        const messageEl = document.getElementById('confirm-dialog-message');
+        const checkboxWrapper = document.getElementById('confirm-dialog-checkbox-wrapper');
+        const checkbox = document.getElementById('confirm-dialog-checkbox');
+        const confirmBtn = document.getElementById('confirm-dialog-confirm');
+        const cancelBtn = document.getElementById('confirm-dialog-cancel');
+        
+        if (!dialog || !titleEl || !messageEl || !confirmBtn || !cancelBtn) {
+            resolve({ confirmed: false, dontShowAgain: false });
+            return;
+        }
+        
+        // 设置内容
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        // 显示/隐藏复选框
+        if (showCheckbox && checkboxKey) {
+            checkboxWrapper.style.display = 'flex';
+            checkbox.checked = false;
+        } else {
+            checkboxWrapper.style.display = 'none';
+        }
+        
+        // 显示对话框
+        dialog.classList.add('visible');
+        
+        // 移除旧的事件监听器
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        
+        // 确认按钮
+        newConfirmBtn.onclick = () => {
+            const dontShowAgain = checkbox.checked;
+            if (dontShowAgain && checkboxKey) {
+                localStorage.setItem(checkboxKey, 'true');
+            }
+            dialog.classList.remove('visible');
+            resolve({ confirmed: true, dontShowAgain });
+        };
+        
+        // 取消按钮
+        newCancelBtn.onclick = () => {
+            dialog.classList.remove('visible');
+            resolve({ confirmed: false, dontShowAgain: false });
+        };
+    });
+}
+
+/**
+ * 处理重新生成
+ */
+async function handleReroll(messageId, isUserMessage) {
+    const message = await db.get(STORES.CHAT_HISTORY, messageId);
+    if (!message) {
+        showToast('消息不存在');
+        return;
+    }
+    
+    const session = await db.get(STORES.SESSIONS, message.chatId);
+    if (!session) {
+        showToast('会话不存在');
+        return;
+    }
+    
+    const contact = await db.get(STORES.CONTACTS, session.contactId);
+    if (!contact) {
+        showToast('角色不存在');
+        return;
+    }
+    
+    // 获取所有历史消息
+    const allHistory = await db.getChatHistory(message.chatId);
+    
+    // 找到当前消息的索引
+    const currentIndex = allHistory.findIndex(m => m.id === messageId);
+    if (currentIndex === -1) {
+        showToast('消息索引错误');
+        return;
+    }
+    
+    // 确定要删除的消息范围
+    let messagesToDelete;
+    let confirmMessage;
+    let checkboxKey;
+    
+    if (isUserMessage) {
+        // 用户消息：删除从此消息往后的所有消息（不包括当前消息）
+        messagesToDelete = allHistory.slice(currentIndex + 1);
+        confirmMessage = `将删除从此用户消息之后的 ${messagesToDelete.length} 条消息，并重新生成AI回复。确认继续吗？`;
+        checkboxKey = 'reroll-user-message-no-prompt';
+    } else {
+        // AI消息：删除从此消息开始往后的所有消息（包括当前消息）
+        messagesToDelete = allHistory.slice(currentIndex);
+        confirmMessage = `将删除从此AI消息开始的 ${messagesToDelete.length} 条消息，并重新生成AI回复。确认继续吗？`;
+        checkboxKey = 'reroll-ai-message-no-prompt';
+    }
+    
+    // 检查是否需要显示确认对话框
+    const dontShowAgain = localStorage.getItem(checkboxKey) === 'true';
+    let confirmed = false;
+    
+    if (dontShowAgain) {
+        confirmed = true;
+    } else {
+        const result = await showConfirmDialog(
+            '重新生成',
+            confirmMessage,
+            true,
+            checkboxKey
+        );
+        confirmed = result.confirmed;
+    }
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    // 删除消息
+    for (const msg of messagesToDelete) {
+        await db.delete(STORES.CHAT_HISTORY, msg.id);
+    }
+    
+    // 重新渲染界面
+    await openChat(message.chatId);
+    
+    // 触发AI回复
+    showToast('正在重新生成...');
+    await queueAIResponse(session, contact);
 }
 
 async function queueAIResponse(session, contact) {
@@ -463,6 +1049,7 @@ async function processAIResponse(session, contact) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
     try {
+        // 获取聊天历史，onlyNormal参数为true时会自动过滤folded和recalled状态的消息
         const history = await db.getChatHistory(session.id, true);
         const contextCount = Math.min(settings.contextCount || 2000, 5000); // 确保不超过5000
         const recent = history.slice(-contextCount);
