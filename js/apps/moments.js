@@ -66,6 +66,19 @@ async function renderFeed() {
         if (settings) {
             coverImage = settings.momentsCover || coverImage;
         }
+        
+        // 从用户设定中获取头像和名称
+        const personas = await db.getAll(STORES.USER_PERSONAS);
+        if (personas && personas.length > 0) {
+            // 使用第一个用户设定的头像和名称
+            const firstPersona = personas[0];
+            if (firstPersona.avatar) {
+                userAvatar = firstPersona.avatar;
+            }
+            if (firstPersona.name) {
+                userName = firstPersona.name;
+            }
+        }
     } catch (e) {
         console.log('加载朋友圈设置失败');
     }

@@ -3,7 +3,7 @@
  */
 
 import { db, STORES } from '../db.js';
-import { formatTime, simpleMarkdown, showToast, generateId, getDefaultSystemPrompt, getCurrentTimestamp, formatDate } from '../utils.js';
+import { formatTime, simpleMarkdown, showToast, generateId, getDefaultSystemPrompt, getGroupPrompt, getCurrentTimestamp, formatDate } from '../utils.js';
 import { getLocation } from '../location.js';
 import { getWeather } from '../weather.js';
 import { Logger, LOG_TYPES } from '../logger.js';
@@ -133,6 +133,33 @@ async function getAllEmojis() {
 async function isEmojiAvailableForContact(emojiId, contactId) {
     const availableEmojis = await getAvailableEmojisForContact(contactId);
     return availableEmojis.some(e => e.id === emojiId);
+}
+
+/**
+ * 为群聊所有成员授权表情包
+ * @param {string} emojiId - 表情包ID
+ * @param {object} session - 会话对象
+ */
+async function authorizeEmojiForGroup(emojiId, session) {
+    if (!session || session.type !== 'group' || !session.contactIds) return;
+    
+    let authorizedCount = 0;
+    
+    for (const cid of session.contactIds) {
+        // 检查是否已授权，避免重复操作数据库
+        const isAvailable = await isEmojiAvailableForContact(emojiId, cid);
+        if (!isAvailable) {
+            await authorizeEmojiForContact(emojiId, cid);
+            authorizedCount++;
+        }
+    }
+    
+    if (authorizedCount > 0) {
+        const emoji = emojiCache ? emojiCache[emojiId] : null;
+        const emojiName = emoji?.meaning || emojiId;
+        // 避免太频繁的提示，或者提示内容更通用
+        console.log(`已为群成员开通表情包: ${emojiName}`);
+    }
 }
 
 /**
@@ -1362,17 +1389,22 @@ async function sendEmojiMessage(emojiId, contactId) {
     const session = await db.get(STORES.SESSIONS, currentChatId);
     if (!session) return;
 
-    const contact = await db.get(STORES.CONTACTS, contactId);
-    if (!contact) return;
+    if (session.type === 'group') {
+        // 群聊：给所有群成员授权
+        await authorizeEmojiForGroup(emojiId, session);
+    } else {
+        const contact = await db.get(STORES.CONTACTS, contactId);
+        if (!contact) return;
 
-    // 检查表情包是否在角色权限内，如果不在则自动授权
-    const isAvailable = await isEmojiAvailableForContact(emojiId, contactId);
-    if (!isAvailable) {
-        await authorizeEmojiForContact(emojiId, contactId);
-        // 获取表情包信息用于显示提示
-        const emoji = emojiCache[emojiId];
-        const emojiName = emoji?.meaning || emojiId;
-        showToast(`已为 ${contact.name} 开通表情包: ${emojiName}`);
+        // 检查表情包是否在角色权限内，如果不在则自动授权
+        const isAvailable = await isEmojiAvailableForContact(emojiId, contactId);
+        if (!isAvailable) {
+            await authorizeEmojiForContact(emojiId, contactId);
+            // 获取表情包信息用于显示提示
+            const emoji = emojiCache[emojiId];
+            const emojiName = emoji?.meaning || emojiId;
+            showToast(`已为 ${contact.name} 开通表情包: ${emojiName}`);
+        }
     }
 
     const now = getCurrentTimestamp();
@@ -1804,9 +1836,58 @@ async function queueGroupAIResponse(session) {
 
     if (messageTimer) clearTimeout(messageTimer);
     
+    // 显示 "对方正在输入..." 的逻辑比较复杂，因为不知道谁会说话
+    // 暂时先不显示 loading 状态，或者显示一个通用的 "群里有人正在输入..."
+    const messagesDiv = document.getElementById('chat-messages');
+    if (messagesDiv) {
+        // 移除旧的 loading
+        const oldLoading = messagesDiv.querySelector('.message.loading');
+        if (oldLoading) messagesDiv.removeChild(oldLoading);
+        
+        // 添加新的 loading (可选，为了体验可以先加一个通用的)
+        /*
+        let loadingMsg = document.createElement('div');
+        loadingMsg.className = 'message assistant loading';
+        loadingMsg.innerHTML = '<div class="msg-content">...</div>';
+        messagesDiv.appendChild(loadingMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        */
+    }
+
     messageTimer = setTimeout(async () => {
-        await processGroupAIResponse(session);
+        await triggerGroupMembersResponse(session);
     }, delay);
+}
+
+async function triggerGroupMembersResponse(session) {
+    // 获取群成员
+    const contactIds = session.contactIds || [];
+    const contacts = await Promise.all(contactIds.map(id => db.get(STORES.CONTACTS, id)));
+    const validContacts = contacts.filter(c => c);
+
+    if (validContacts.length === 0) return;
+
+    // 获取最后一条消息，确定谁刚刚发过言
+    const history = await db.getChatHistory(session.id);
+    const lastMsg = history[history.length - 1];
+    
+    // 排除掉最后发言的人 (无论是用户还是AI)
+    // 如果最后一条是用户的，所有AI都有机会发言
+    // 如果最后一条是某个AI的，该AI暂时不发言 (给别人机会)
+    let candidates = [];
+    if (lastMsg && lastMsg.sender === 'assistant' && lastMsg.contactId) {
+        candidates = validContacts.filter(c => c.id !== lastMsg.contactId);
+    } else {
+        candidates = validContacts;
+    }
+
+    // 并发触发所有候选人的思考
+    // 注意：这里不 await Promise.all，让它们各自独立运行
+    candidates.forEach(contact => {
+        processGroupMemberResponse(session, contact).catch(err => {
+            console.error(`Error in group member response (${contact.name}):`, err);
+        });
+    });
 }
 
 async function queueAIResponse(session, contact) {
@@ -2366,31 +2447,19 @@ async function processAIResponse(session, contact, retryCount = 0) {
     }
 }
 
-async function processGroupAIResponse(session, retryCount = 0) {
-    const MAX_RETRIES = 2;
+async function processGroupMemberResponse(session, targetContact) {
     const settings = await getSettings();
     const presetId = settings.mainPresetId || settings.activePresetId || settings.presets[0].id;
     const activePreset = settings.presets.find(p => p.id === presetId) || settings.presets[0];
     
     if (!activePreset.apiKey) {
-        showToast('请先配置 API Key');
+        console.warn('API Key not configured, skipping group response');
         return;
     }
 
-    const messagesDiv = document.getElementById('chat-messages');
-    if (!messagesDiv) return;
-
-    // Loading 状态
-    let loadingMsg = messagesDiv.querySelector('.message.loading');
-    if (!loadingMsg) {
-        loadingMsg = document.createElement('div');
-        loadingMsg.className = 'message assistant loading';
-        loadingMsg.innerHTML = '<div class="msg-content">群成员正在输入中...</div>';
-        messagesDiv.appendChild(loadingMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    } else if (retryCount > 0) {
-        loadingMsg.innerHTML = `<div class="msg-content">重试中... (${retryCount}/${MAX_RETRIES})</div>`;
-    }
+    // 显示 "对方正在输入..." - 这里对于并发请求，可能会有多个 loading 状态
+    // 我们暂时不在 UI 上显示具体的 loading，以免闪烁或混乱
+    // 或者可以显示一个不带名字的通用 loading
 
     try {
         const history = await db.getChatHistory(session.id, true);
@@ -2402,16 +2471,24 @@ async function processGroupAIResponse(session, retryCount = 0) {
         const contacts = await Promise.all(contactIds.map(id => db.get(STORES.CONTACTS, id)));
         const validContacts = contacts.filter(c => c);
 
-        if (validContacts.length === 0) {
-            throw new Error('群聊没有有效成员');
-        }
+        // 构建 System Prompt - 使用单角色群聊 Prompt
+        const groupPrompt = await getGroupPrompt();
+        let systemContent = groupPrompt || '';
+        
+        // 注入当前角色身份
+        systemContent += `\n\n## 你的身份\n`;
+        systemContent += `你现在的角色是：${targetContact.name}\n`;
+        systemContent += `你的ID是：${targetContact.id}\n`;
+        systemContent += `你的人设：${targetContact.description || '无'}\n`;
 
-        // 构建 System Prompt
-        let systemContent = settings.systemPrompt || '';
-        systemContent += `\n\n这是一个群聊场景。`;
-        systemContent += `\n\n群成员列表：\n`;
+        // 注入群成员列表
+        systemContent += `\n## 群成员列表\n`;
         validContacts.forEach(c => {
-            systemContent += `- ${c.name}: ${c.description || '无'}\n`;
+            if (c.id !== targetContact.id) {
+                systemContent += `- ${c.name} (ID: ${c.id}): ${c.description || '无'}\n`;
+            } else {
+                systemContent += `- ${c.name} (你自己)\n`;
+            }
         });
 
         // 用户人设
@@ -2420,15 +2497,9 @@ async function processGroupAIResponse(session, retryCount = 0) {
             const userPersona = await db.get(STORES.USER_PERSONAS, session.userPersonaId);
             if (userPersona) {
                  userName = userPersona.name || '用户';
-                 systemContent += `\n\n用户人设：\n用户名：${userName}\n用户人设：\n${userPersona.description || '无'}`;
+                 systemContent += `\n## 用户信息\n用户名：${userName}\n用户人设：${userPersona.description || '无'}\n`;
             }
         }
-
-        systemContent += `\n\n请根据对话上下文，选择一个或多个合适的角色进行回复。`;
-        systemContent += `\n回复格式要求：`;
-        systemContent += `\n每个角色的回复必须包裹在 <role name="角色名">...</role> 标签中。`;
-        systemContent += `\n例如：\n<role name="角色A">你好！</role>\n<role name="角色B">大家好啊。</role>`;
-        systemContent += `\n你可以控制多个角色互动，也可以只让一个角色回复。`;
 
         // 构建消息历史
         const apiMessages = [{ role: 'system', content: systemContent }];
@@ -2442,11 +2513,24 @@ async function processGroupAIResponse(session, retryCount = 0) {
                 // 尝试找到发送者名字
                 const senderContact = validContacts.find(c => c.id === m.contactId);
                 const senderName = senderContact ? senderContact.name : '未知角色';
-                // 历史消息需要包装成 role 格式以便 AI 理解是谁说的
-                content = `<role name="${senderName}">${m.content}</role>`;
+                
+                // 历史消息格式化：[角色名]: 消息内容
+                // 注意：这里要把所有消息都变成 user role，或者明确标记是谁说的，
+                // 因为我们在让 AI 扮演 targetContact，所以其他 AI 的发言对它来说也是外部输入。
+                // 简单的做法是全部作为 user 消息，或者用 name 属性。
+                // OpenAI API 支持 name 属性，但为了兼容性，我们直接写在 content 里。
+                
+                if (m.contactId === targetContact.id) {
+                    role = 'assistant'; // 自己说的话
+                    content = m.content; // 直接内容
+                } else {
+                    role = 'user'; // 别人说的话（包括其他AI）
+                    content = `[${senderName}]: ${m.content}`;
+                }
             } else {
                 // 用户消息
-                content = `${userName}: ${m.content}`;
+                role = 'user';
+                content = `[${userName}]: ${m.content}`;
             }
             
             apiMessages.push({ role, content });
@@ -2455,12 +2539,13 @@ async function processGroupAIResponse(session, retryCount = 0) {
         const requestBody = {
             model: activePreset.model,
             messages: apiMessages,
-            temperature: 1.0 // 群聊稍微随机一点
+            temperature: targetContact.temperature || 1.0
         };
 
         await Logger.log(LOG_TYPES.API, {
             url: activePreset.apiUrl,
-            request: requestBody
+            request: requestBody,
+            context: `Group Chat - Member: ${targetContact.name}`
         });
 
         const response = await fetch(activePreset.apiUrl, {
@@ -2473,85 +2558,165 @@ async function processGroupAIResponse(session, retryCount = 0) {
         });
 
         const data = await response.json();
-        await Logger.log(LOG_TYPES.API, { response: data });
-
-        if (messagesDiv.contains(loadingMsg)) {
-            messagesDiv.removeChild(loadingMsg);
-        }
+        
+        await Logger.log(LOG_TYPES.API, {
+            response: data,
+            context: `Group Chat - Member: ${targetContact.name}`
+        });
 
         if (data.choices && data.choices[0]) {
             const aiContent = data.choices[0].message.content;
-            const now = getCurrentTimestamp();
             
-            // 解析 <role> 标签
-            const roleRegex = /<role name="([^"]+)">([\s\S]*?)<\/role>/g;
-            let match;
-            let hasMatch = false;
-            let lastMsgContent = '';
-
-            while ((match = roleRegex.exec(aiContent)) !== null) {
-                hasMatch = true;
-                const roleName = match[1];
-                const roleContent = match[2].trim();
-                
-                // 找到对应的 contactId
-                const contact = validContacts.find(c => c.name === roleName);
-                if (contact && roleContent) {
-                    // 保存消息
-                    const aiMsg = {
-                        chatId: session.id,
-                        contactId: contact.id,
-                        sender: 'assistant',
-                        type: 'text', // 暂时只支持文本，后续可扩展
-                        content: roleContent,
-                        status: 'normal',
-                        timestamp: now
-                    };
-                    await db.put(STORES.CHAT_HISTORY, aiMsg);
-                    lastMsgContent = `${roleName}: ${roleContent}`;
-                }
+            // 检查是否为空消息
+            if (aiContent.includes('<info>empty message</info>')) {
+                console.log(`${targetContact.name} decided to stay silent.`);
+                return;
             }
 
-            if (!hasMatch) {
-                // 如果没有匹配到 role 标签，默认让第一个角色回复（或者视为系统消息）
-                // 这里简单处理：视为第一个角色回复
-                if (validContacts.length > 0 && aiContent.trim()) {
-                    const contact = validContacts[0];
-                    const aiMsg = {
-                        chatId: session.id,
-                        contactId: contact.id,
-                        sender: 'assistant',
-                        type: 'text',
-                        content: aiContent.trim(),
-                        status: 'normal',
-                        timestamp: now
-                    };
-                    await db.put(STORES.CHAT_HISTORY, aiMsg);
-                    lastMsgContent = `${contact.name}: ${aiContent.trim()}`;
+            const now = getCurrentTimestamp();
+            
+            // 解析内容（这里不需要解析 <role> 标签了，因为 AI 只是输出自己的话）
+            // 直接复用 parseGroupRoleContent 来解析 <words>, <thought> 等标签
+            // 虽然函数名带有 GroupRoleContent，但逻辑是通用的标签解析
+            const parsedMessages = parseGroupRoleContent(aiContent);
+            
+            let lastMsgContent = '';
+            
+            for (const msg of parsedMessages) {
+                const aiMsg = {
+                    chatId: session.id,
+                    contactId: targetContact.id,
+                    sender: 'assistant',
+                    type: msg.type,
+                    content: msg.content,
+                    status: 'normal',
+                    timestamp: now,
+                    ...(msg.amount !== undefined && { amount: msg.amount }),
+                    ...(msg.message !== undefined && { message: msg.message }),
+                    ...(msg.productName !== undefined && { productName: msg.productName }),
+                    ...(msg.price !== undefined && { price: msg.price }),
+                    ...(msg.image !== undefined && { image: msg.image }),
+                    ...(msg.linkTitle !== undefined && { linkTitle: msg.linkTitle }),
+                    ...(msg.url !== undefined && { url: msg.url }),
+                    ...(msg.noteTitle !== undefined && { noteTitle: msg.noteTitle })
+                };
+
+                // 群聊中，如果AI发送了表情包，则自动为群内所有角色授权该表情包
+                if (msg.type === 'emoji' && session.type === 'group') {
+                    await authorizeEmojiForGroup(msg.content, session);
                 }
+
+                await db.put(STORES.CHAT_HISTORY, aiMsg);
+                
+                if (msg.type === 'text') lastMsgContent = msg.content;
+                else lastMsgContent = `[${msg.type}]`;
             }
 
             // 更新会话
             session.lastActive = now;
-            session.lastMessage = lastMsgContent || '[新消息]';
+            session.lastMessage = `${targetContact.name}: ${lastMsgContent || '[新消息]'}`;
             await db.put(STORES.SESSIONS, session);
 
             if (currentChatId === session.id) {
-                // 重新渲染以显示新消息
                 await renderMessagesInManageMode();
             }
+            
+            // **关键一步**：有人说话了，触发新一轮的群聊循环
+            // 这样其他想说话但没抢到的，或者想接话的角色，会在 delay 之后再次思考
+            queueGroupAIResponse(session);
 
         } else {
-            throw new Error(data.error?.message || 'API 响应为空');
+            console.warn('API Response invalid', data);
         }
 
     } catch (error) {
-        await Logger.log(LOG_TYPES.ERROR, `Group AI Response Error: ${error.message}`);
-        if (messagesDiv && messagesDiv.contains(loadingMsg)) {
-            messagesDiv.removeChild(loadingMsg);
-        }
-        showErrorDialog('群聊回复失败', error.message);
+        console.error(`Group Member (${targetContact.name}) Response Error:`, error);
+        // 不弹窗报错，避免干扰用户，仅记录日志
     }
+}
+
+/**
+ * 解析群聊角色内容中的消息标签
+ * @param {string} content - 角色标签内的内容
+ * @returns {Array} 解析后的消息数组
+ */
+function parseGroupRoleContent(content) {
+    const messages = [];
+    
+    // 支持的标签类型
+    const tagRegex = /<(words|action|thought|state|emoji|location|redpacket|transfer|product|link|note)(?:\s+[^>]*)?>([\s\S]*?)<\/\1>/gi;
+    let match;
+    let hasMatch = false;
+    
+    while ((match = tagRegex.exec(content)) !== null) {
+        hasMatch = true;
+        let type = match[1].toLowerCase();
+        const tagContent = match[2].trim();
+        let extraData = {};
+        
+        // 转换 words 为 text
+        if (type === 'words') type = 'text';
+        
+        // 提取红包属性
+        if (type === 'redpacket') {
+            const amount = parseFloat(tagContent);
+            extraData.amount = isNaN(amount) ? 0 : amount;
+            const messageMatch = match[0].match(/message="([^"]+)"/);
+            extraData.message = messageMatch ? messageMatch[1] : '恭喜发财，大吉大利';
+        }
+        
+        // 提取转账属性
+        if (type === 'transfer') {
+            const amount = parseFloat(tagContent);
+            extraData.amount = isNaN(amount) ? 0 : amount;
+            const messageMatch = match[0].match(/message="([^"]+)"/);
+            extraData.message = messageMatch ? messageMatch[1] : '';
+        }
+        
+        // 提取商品属性
+        if (type === 'product') {
+            const nameMatch = match[0].match(/name="([^"]+)"/);
+            const priceMatch = match[0].match(/price="([^"]+)"/);
+            const imageMatch = match[0].match(/image="([^"]+)"/);
+            extraData.productName = nameMatch ? nameMatch[1] : '商品';
+            extraData.price = priceMatch ? priceMatch[1] : '';
+            extraData.image = imageMatch ? imageMatch[1] : '';
+        }
+        
+        // 提取链接属性
+        if (type === 'link') {
+            const titleMatch = match[0].match(/title="([^"]+)"/);
+            const urlMatch = match[0].match(/url="([^"]+)"/);
+            extraData.linkTitle = titleMatch ? titleMatch[1] : '链接';
+            extraData.url = urlMatch ? urlMatch[1] : '';
+        }
+        
+        // 提取备忘录属性
+        if (type === 'note') {
+            const titleMatch = match[0].match(/title="([^"]+)"/);
+            extraData.noteTitle = titleMatch ? titleMatch[1] : '备忘';
+        }
+        
+        // state 和 thought 类型不保存到聊天记录，但仍然解析
+        // memory 类型也不保存到聊天记录
+        if (type !== 'state' && type !== 'memory') {
+            messages.push({
+                type: type,
+                content: tagContent,
+                ...extraData
+            });
+        }
+    }
+    
+    // 如果没有匹配到任何标签，将整个内容作为文本消息
+    if (!hasMatch && content.trim()) {
+        messages.push({
+            type: 'text',
+            content: content.trim()
+        });
+    }
+    
+    return messages;
 }
 
 /**

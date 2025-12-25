@@ -143,7 +143,7 @@ async function renderUserPersona(target) {
         <div class="list-container" style="padding-bottom: 60px;">
             ${personas.map(p => `
                 <div class="item persona-item" data-id="${p.id}">
-                    <div class="avatar">👤</div>
+                    <div class="avatar">${p.avatar ? `<img src="${p.avatar}">` : '👤'}</div>
                     <div class="info">
                         <div class="name">${p.name}</div>
                         <div class="desc">${p.description || ''}</div>
@@ -159,7 +159,7 @@ async function renderUserPersona(target) {
 }
 
 async function renderUserPersonaForm(target, id = null) {
-    let persona = { name: '', description: '' };
+    let persona = { name: '', description: '', avatar: '' };
     if (id) {
         persona = await db.get(STORES.USER_PERSONAS, id);
     }
@@ -168,6 +168,10 @@ async function renderUserPersonaForm(target, id = null) {
     
     target.innerHTML = `
         <div class="form-container" style="padding: 20px;">
+            <div class="avatar-upload" id="u-avatar-container" title="点击上传头像">
+                ${persona.avatar ? `<img src="${persona.avatar}" id="u-avatar-preview">` : '<div class="upload-placeholder"><span>📸</span><p>上传头像</p></div>'}
+                <input type="file" id="u-avatar-input" accept="image/*" style="display:none">
+            </div>
             <div class="input-group">
                 <label>设定名称 (如: "默认", "热恋期")</label>
                 <input type="text" id="u-name" value="${persona.name}" placeholder="给这个设定起个名字...">
@@ -183,6 +187,22 @@ async function renderUserPersonaForm(target, id = null) {
             </div>
         </div>
     `;
+
+    const avatarInput = document.getElementById('u-avatar-input');
+    const avatarContainer = document.getElementById('u-avatar-container');
+    avatarContainer.onclick = () => avatarInput.click();
+    
+    avatarInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                persona.avatar = ev.target.result;
+                avatarContainer.innerHTML = `<img src="${persona.avatar}" id="u-avatar-preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
     
     document.getElementById('save-persona-btn').onclick = async () => {
         const name = document.getElementById('u-name').value.trim();
@@ -293,7 +313,7 @@ async function renderForm(id = null) {
 
         await db.put(STORES.CONTACTS, newContact);
         showToast('保存成功');
-        renderList();
+        renderTabs();
     };
 
     if (id) {

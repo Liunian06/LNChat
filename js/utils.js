@@ -122,6 +122,26 @@ export async function getExchangeDiaryPrompt() {
     return cachedExchangeDiaryPrompt;
 }
 
+// 获取群聊提示词 (从文件加载)
+let cachedGroupPrompt = null;
+export async function getGroupPrompt() {
+    if (cachedGroupPrompt !== null) return cachedGroupPrompt;
+    
+    try {
+        const response = await fetch('assets/group_prompt.txt');
+        if (response.ok) {
+            cachedGroupPrompt = await response.text();
+        } else {
+            console.error('Failed to load group prompt:', response.status);
+            cachedGroupPrompt = '';
+        }
+    } catch (error) {
+        console.error('Error loading group prompt:', error);
+        cachedGroupPrompt = '';
+    }
+    return cachedGroupPrompt;
+}
+
 // Markdown 转 HTML (使用 marked 库)
 export function simpleMarkdown(text) {
     if (!text) return '';
