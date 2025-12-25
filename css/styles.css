@@ -19,13 +19,13 @@
     --glass-blur: 25px;
 
     /* 气泡样式变量 (默认值 - 可爱风) */
-    --user-msg-bg: linear-gradient(135deg, #FFB6D9 0%, #FF8EC7 100%);
+    --user-msg-bg: linear-gradient(135deg, #5B8DEF 0%, #7C6FEF 100%);
     --user-msg-text: #ffffff;
-    --user-msg-radius: 24px;
+    --user-msg-radius: 20px;
     
-    --ai-msg-bg: rgba(230, 240, 255, 0.15);
+    --ai-msg-bg: rgba(60, 65, 80, 0.85);
     --ai-msg-text: #ffffff;
-    --ai-msg-radius: 24px;
+    --ai-msg-radius: 20px;
     
     /* 自定义字体变量 */
     --custom-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", "Noto Sans SC", sans-serif;
@@ -208,6 +208,10 @@ body {
     margin-bottom: 8px;
     font-size: 30px;
     transition: all 0.3s ease;
+    overflow: hidden;
+    isolation: isolate;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 .app-name {
@@ -239,6 +243,30 @@ body {
     padding: 0 15px;
     border-bottom: 1px solid var(--glass-border);
     background: rgba(255, 255, 255, 0.08);
+}
+
+/* 标题栏状态显示 */
+.header-status {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    vertical-align: middle;
+    display: inline-block;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 头部操作按钮容器 */
+#header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .back-btn {
@@ -427,13 +455,13 @@ body {
 
 .message {
     max-width: 82%;
-    padding: 12px 16px;
+    padding: 14px 18px;
     border-radius: 20px;
     font-size: 15px;
     position: relative;
-    line-height: 1.5;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    line-height: 1.6;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: flex-start;
     gap: 10px;
@@ -451,10 +479,12 @@ body {
     align-items: center;
     flex-shrink: 0;
     margin-top: 2px;
+    opacity: 0;
 }
 
 .message.manage-mode .message-checkbox-wrapper {
     width: 24px;
+    opacity: 1;
 }
 
 .message .message-checkbox-wrapper .custom-checkbox {
@@ -495,26 +525,75 @@ body {
     background: var(--user-msg-bg);
     color: var(--user-msg-text);
     border-radius: var(--user-msg-radius);
-    border-bottom-right-radius: 4px; /* 默认保留尾巴，如果用户设置了圆角，可能会影响整体感，但先这样 */
-    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+    border-bottom-right-radius: 6px;
+    box-shadow: 0 4px 15px rgba(91, 141, 239, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .message.assistant {
     align-self: flex-start;
     background: var(--ai-msg-bg);
     color: var(--ai-msg-text);
-    border: 1px solid var(--glass-border);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--ai-msg-radius);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .msg-time {
-    font-size: 10px;
-    opacity: 0.5;
+    font-size: 11px;
+    opacity: 0.6;
     margin-top: 6px;
 }
 
-.message.user .msg-time { text-align: right; }
+.message.user .msg-time {
+    text-align: right;
+}
+
+/* 群聊样式 */
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    margin-right: 8px;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: 1px solid var(--glass-border);
+}
+
+.message-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.message-sender-name {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+    margin-left: 2px;
+}
+
+.group-select-item.selected {
+    background: rgba(33, 150, 243, 0.2);
+    border-color: var(--primary-color);
+}
+
+.group-select-item.selected .custom-checkbox {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.group-select-item.selected .custom-checkbox::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+}
 
 /* 消息状态样式 */
 .message.recalled {
@@ -529,24 +608,31 @@ body {
     box-shadow: none !important;
 }
 
-/* 新增消息类型样式 */
+/* 新增消息类型样式 - 动作描述 */
 .message.action {
     align-self: center;
-    background: transparent !important;
-    border: none !important;
-    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    color: rgba(255, 255, 255, 0.7);
     font-style: italic;
     font-size: 13px;
-    padding: 4px 10px;
+    padding: 8px 16px;
     box-shadow: none !important;
     text-align: center;
-    max-width: 100%;
+    max-width: 85%;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.message.action .msg-time {
+    display: none;
 }
 
 .message.thought {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px dashed var(--glass-border);
-    color: rgba(255, 255, 255, 0.85);
+    background: rgba(147, 51, 234, 0.15);
+    border: 1px dashed rgba(147, 51, 234, 0.4);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .message.thought .msg-content::before {
@@ -556,7 +642,7 @@ body {
 
 .message.state {
     align-self: center;
-    background: rgba(0, 0, 0, 0.2) !important;
+    background: rgba(0, 0, 0, 0.3) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 12px;
     padding: 4px 12px;
@@ -583,6 +669,32 @@ body {
 
 .message.emoji.assistant {
     align-self: flex-start;
+}
+
+/* 图片消息样式 */
+.message.image {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.message.image.user {
+    align-self: flex-end;
+}
+
+.message.image.assistant {
+    align-self: flex-start;
+}
+
+.message.image .msg-content img {
+    max-width: 200px;
+    max-height: 300px;
+    border-radius: 12px;
+    display: block;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .emoji-message-img {
@@ -986,6 +1098,11 @@ input[type=range]::-webkit-slider-thumb {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+.chat-item.selected:hover {
+    background: rgba(33, 150, 243, 0.25) !important;
+    border-color: var(--primary-color) !important;
+}
+
 .chat-item:active {
     transform: scale(0.97);
 }
@@ -1070,6 +1187,15 @@ input[type=range]::-webkit-slider-thumb {
     content: '✓';
     color: white;
     font-size: 12px;
+}
+
+.group-select-item.selected {
+    background: rgba(33, 150, 243, 0.2);
+    border-color: var(--primary-color);
+}
+
+.group-select-item.selected:hover {
+    background: rgba(33, 150, 243, 0.25);
 }
 
 .memory-item.selected {
@@ -2077,4 +2203,5438 @@ input:checked + .slider:before {
     padding: 16px;
     border-radius: 16px;
   }
+}
+
+/* ===== 扩展菜单样式 ===== */
+
+/* 扩展菜单容器 */
+.extension-menu {
+  position: absolute;
+  bottom: 74px;
+  left: 0;
+  width: 100%;
+  background: rgba(30, 30, 30, 0.98);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-top: 1px solid var(--glass-border);
+  padding: 20px 15px;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.extension-menu.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 扩展菜单网格 - 4个项目一行显示 */
+.extension-menu-grid {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* 扩展菜单项 */
+.extension-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.extension-menu-item:active {
+  transform: scale(0.9);
+}
+
+/* 扩展菜单图标 */
+.extension-menu-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+.extension-menu-item:hover .extension-menu-icon {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+/* 扩展菜单标签 */
+.extension-menu-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* 加号按钮激活状态 */
+#plus-btn.active {
+  color: var(--primary-color);
+  transform: rotate(45deg);
+}
+
+#plus-btn {
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+/* 调整输入区域的层级 */
+.input-area {
+  position: relative;
+  z-index: 60;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+  .extension-menu-grid {
+    gap: 15px 10px;
+  }
+  
+  .extension-menu-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 22px;
+  }
+  
+  .extension-menu-label {
+    font-size: 11px;
+  }
+}
+
+/* ===== 位置消息样式 ===== */
+
+.location-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #2196F3 0%, #1565C0 100%);
+    padding: 15px 18px;
+    border-radius: 12px;
+    min-width: 180px;
+    position: relative;
+    overflow: hidden;
+}
+
+.location-message::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.location-icon {
+    font-size: 36px;
+    flex-shrink: 0;
+}
+
+.location-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.location-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    margin-bottom: 4px;
+    padding-right: 35px;
+}
+
+.location-address {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.location-label {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* 位置消息特殊样式 */
+.message.location {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.message.location.user {
+    align-self: flex-end;
+}
+
+.message.location.assistant {
+    align-self: flex-start;
+}
+
+/* ===== 位置输入对话框样式 ===== */
+
+.location-input-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding: 20px;
+}
+
+.location-input-dialog.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.location-dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.location-dialog-content {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  background: rgba(40, 40, 40, 0.98);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  transform: translateY(20px);
+  transition: transform 0.3s ease;
+}
+
+.location-input-dialog.visible .location-dialog-content {
+  transform: translateY(0);
+}
+
+.location-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.location-dialog-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.location-dialog-header .close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.location-dialog-header .close-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.location-dialog-body {
+  margin-bottom: 20px;
+}
+
+.location-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  font-size: 16px;
+  color: white;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.location-input:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.location-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.location-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 10px;
+  padding-left: 4px;
+}
+
+.location-dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.location-dialog-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+}
+
+.location-dialog-btn.primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.location-dialog-btn.primary:active {
+  transform: scale(0.98);
+  opacity: 0.8;
+}
+
+.location-dialog-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid var(--glass-border);
+}
+
+.location-dialog-btn.secondary:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ===== 钱包和商城样式 ===== */
+
+/* 钱包卡片 */
+.wallet-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.wallet-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 50px rgba(255, 107, 157, 0.5);
+}
+
+/* 签到按钮动画 */
+#signin-btn {
+  transition: all 0.3s ease;
+}
+
+#signin-btn:not(:disabled):hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+}
+
+#signin-btn:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+/* 商城分类卡片 */
+.category-card {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.category-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.category-card:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+/* 商品卡片 */
+.item-card {
+  transition: all 0.3s ease;
+}
+
+.item-card:hover {
+  transform: translateY(-3px);
+}
+
+.item-card:active {
+  transform: translateY(-1px) scale(0.98);
+}
+
+/* 联系人选择卡片 */
+.contact-select {
+  transition: all 0.3s ease;
+}
+
+.contact-select:hover {
+  transform: scale(1.05);
+}
+
+.contact-select:active {
+  transform: scale(0.95);
+}
+
+/* 成就动画 */
+@keyframes achievement-unlock {
+  0% {
+    transform: scale(0.5) rotate(-10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+.achievement-unlocked {
+  animation: achievement-unlock 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 礼物飘落动画 */
+@keyframes gift-float {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.gift-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 4001;
+  animation: gift-float 3s ease-in forwards;
+}
+
+/* 余额变化动画 */
+@keyframes balance-change {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.2);
+    color: #4CAF50;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.balance-increase {
+  animation: balance-change 0.5s ease;
+}
+
+/* 商城购买按钮 */
+#purchase-btn {
+  transition: all 0.3s ease;
+}
+
+#purchase-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(255, 107, 157, 0.5);
+}
+
+#purchase-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* 钱包操作卡片 */
+.wallet-action-card {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.wallet-action-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.wallet-action-card:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+/* 弹跳动画 */
+@keyframes bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  75% {
+    transform: scale(0.95);
+  }
+}
+
+/* 商品详情浮动动画 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* 稀有度边框闪光 */
+@keyframes rarity-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+}
+
+.legendary-item {
+  animation: rarity-glow 2s ease-in-out infinite;
+}
+
+/* 签到星星动画 */
+@keyframes star-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.signin-star {
+  animation: star-pulse 1.5s ease-in-out infinite;
+}
+
+/* 余额卡片渐变动画 */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 5s ease infinite;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+  .wallet-card {
+    padding: 20px;
+  }
+  
+  .wallet-card .balance {
+    font-size: 36px;
+  }
+  
+  .category-card {
+    padding: 15px;
+  }
+  
+  .category-card .icon {
+    font-size: 28px;
+  }
+}
+
+/* ========== 红包和转账消息样式 ========== */
+.redpacket-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
+    padding: 15px 18px;
+    border-radius: 12px;
+    min-width: 180px;
+    position: relative;
+    overflow: hidden;
+}
+
+.redpacket-message::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.redpacket-icon {
+    font-size: 36px;
+    flex-shrink: 0;
+}
+
+.redpacket-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.redpacket-amount {
+    font-size: 20px;
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.redpacket-msg {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.redpacket-label {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.transfer-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+    padding: 15px 18px;
+    border-radius: 12px;
+    min-width: 180px;
+    position: relative;
+    overflow: hidden;
+}
+
+.transfer-message::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.transfer-icon {
+    font-size: 36px;
+    flex-shrink: 0;
+}
+
+.transfer-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.transfer-amount {
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.transfer-label-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 4px;
+}
+
+.transfer-label {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ========== 金额输入对话框样式 ========== */
+.amount-input-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.amount-input-dialog.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.amount-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.amount-dialog-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px 24px 0 0;
+    padding: 25px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.amount-input-dialog.visible .amount-dialog-content {
+    transform: translateY(0);
+}
+
+.amount-dialog-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.amount-dialog-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+.amount-dialog-body {
+    margin-bottom: 20px;
+}
+
+.amount-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+}
+
+.currency-symbol {
+    font-size: 28px;
+    font-weight: bold;
+    color: white;
+    margin-right: 10px;
+}
+
+.amount-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    outline: none;
+    text-align: left;
+    width: 100%;
+}
+
+.amount-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.amount-input::-webkit-inner-spin-button,
+.amount-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.quick-amount-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.quick-amount-btn {
+    flex: 1;
+    min-width: calc(33.33% - 10px);
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-amount-btn:hover,
+.quick-amount-btn:active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.redpacket-message-wrapper {
+    margin-top: 15px;
+}
+
+.redpacket-message-input {
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.redpacket-message-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.amount-dialog-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.amount-dialog-btn {
+    flex: 1;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.amount-dialog-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid var(--glass-border);
+}
+
+.amount-dialog-btn.primary {
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.amount-dialog-btn:hover {
+    transform: translateY(-2px);
+}
+
+.amount-dialog-btn:active {
+    transform: translateY(0);
+}
+
+/* 红包和转账消息特殊样式 */
+.message.redpacket,
+.message.transfer {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.message.redpacket.user,
+.message.transfer.user {
+    align-self: flex-end;
+}
+
+.message.redpacket.assistant,
+.message.transfer.assistant {
+    align-self: flex-start;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+    .quick-amount-btn {
+        min-width: calc(50% - 10px);
+        padding: 10px;
+        font-size: 13px;
+    }
+    
+    .amount-input {
+        font-size: 28px;
+    }
+    
+    .currency-symbol {
+        font-size: 24px;
+    }
+    
+    .redpacket-message,
+    .transfer-message {
+        min-width: 150px;
+        padding: 12px 15px;
+    }
+    
+    .redpacket-amount,
+    .transfer-amount {
+        font-size: 18px;
+    }
+    
+    .redpacket-icon,
+    .transfer-icon {
+        font-size: 30px;
+    }
+}
+
+/* ========== 纪念日应用样式 ========== */
+
+/* 纪念日容器 */
+.anniversary-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 15px;
+    background: linear-gradient(180deg, rgba(139, 90, 43, 0.3) 0%, rgba(194, 147, 88, 0.2) 100%);
+}
+
+/* 顶部大卡片 - 英雄卡片 */
+.anniversary-hero-card {
+    position: relative;
+    width: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    min-height: 280px;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.anniversary-hero-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+}
+
+.anniversary-hero-card:active {
+    transform: scale(0.98);
+}
+
+.anniversary-hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.anniversary-hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 280px;
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.anniversary-hero-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    margin-bottom: 15px;
+}
+
+.anniversary-hero-days {
+    font-size: 100px;
+    font-weight: 200;
+    color: white;
+    line-height: 1;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    letter-spacing: -5px;
+}
+
+.anniversary-hero-date {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 15px;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* 纪念日列表 */
+.anniversary-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.anniversary-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.anniversary-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.anniversary-item:active {
+    transform: scale(0.98);
+}
+
+.anniversary-item.manage-mode {
+    padding-left: 10px;
+}
+
+.anniversary-item .checkbox-wrapper {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s ease, margin-right 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.anniversary-item.manage-mode .checkbox-wrapper {
+    width: 30px;
+    margin-right: 10px;
+}
+
+.anniversary-item.selected {
+    background: rgba(33, 150, 243, 0.15);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.anniversary-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.anniversary-item-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.anniversary-item-days {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.anniversary-item-days.countdown {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+}
+
+.anniversary-item-days.countup {
+    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    color: white;
+}
+
+.anniversary-item-days .days-number {
+    font-size: 20px;
+}
+
+.anniversary-item-days .days-unit {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+/* 纪念日详情页 */
+.anniversary-detail {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.anniversary-detail-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+.anniversary-detail-content {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+.anniversary-detail-card {
+    text-align: center;
+    padding: 40px 30px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.anniversary-detail-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.anniversary-detail-days {
+    font-size: 120px;
+    font-weight: 200;
+    color: white;
+    line-height: 1;
+    text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    letter-spacing: -8px;
+}
+
+.anniversary-detail-date {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 25px;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* 详情页操作按钮 */
+.anniversary-detail-actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    padding: 25px;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.anniversary-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 20px;
+    background: rgba(194, 147, 88, 0.9);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 70px;
+}
+
+.anniversary-action-btn span:first-child {
+    font-size: 18px;
+}
+
+.anniversary-action-btn:hover {
+    transform: translateY(-3px);
+    background: rgba(194, 147, 88, 1);
+    box-shadow: 0 5px 20px rgba(194, 147, 88, 0.4);
+}
+
+.anniversary-action-btn:active {
+    transform: translateY(0);
+}
+
+/* 背景选择器 */
+.anniversary-bg-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.anniversary-bg-option {
+    aspect-ratio: 16 / 10;
+    border-radius: 10px;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.anniversary-bg-option:hover {
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.anniversary-bg-option.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+}
+
+.anniversary-bg-option.custom-bg {
+    background: var(--glass-bg);
+    border: 2px dashed var(--glass-border);
+    font-size: 24px;
+    color: var(--text-secondary);
+}
+
+.anniversary-bg-option.custom-bg:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+/* 背景选择对话框 */
+.anniversary-bg-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.anniversary-bg-dialog.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.anniversary-bg-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.anniversary-bg-dialog-content {
+    position: relative;
+    width: 100%;
+    max-height: 60vh;
+    background: rgba(40, 40, 40, 0.98);
+    border: 1px solid var(--glass-border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.anniversary-bg-dialog.visible .anniversary-bg-dialog-content {
+    transform: translateY(0);
+}
+
+.anniversary-bg-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.anniversary-bg-dialog-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 18px;
+}
+
+.anniversary-bg-dialog-header .close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.anniversary-bg-dialog-header .close-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.anniversary-bg-dialog-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    overflow-y: auto;
+    max-height: 300px;
+    padding: 5px;
+}
+
+.anniversary-bg-dialog-option {
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.anniversary-bg-dialog-option:hover {
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.anniversary-bg-dialog-option.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+}
+
+.anniversary-bg-dialog-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.anniversary-bg-dialog-actions .custom-url-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.anniversary-bg-dialog-actions .custom-url-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* 发送到聊天对话框 */
+.anniversary-send-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.anniversary-send-dialog.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.anniversary-send-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.anniversary-send-dialog-content {
+    position: relative;
+    width: 100%;
+    max-height: 60vh;
+    background: rgba(40, 40, 40, 0.98);
+    border: 1px solid var(--glass-border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.anniversary-send-dialog.visible .anniversary-send-dialog-content {
+    transform: translateY(0);
+}
+
+.anniversary-send-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.anniversary-send-dialog-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 18px;
+}
+
+.anniversary-send-dialog-header .close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.anniversary-send-dialog-header .close-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.anniversary-send-dialog-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.anniversary-send-dialog-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 15px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+.anniversary-send-dialog-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-3px);
+}
+
+.anniversary-send-dialog-item:active {
+    transform: scale(0.95);
+}
+
+.anniversary-send-dialog-item .avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+}
+
+.anniversary-send-dialog-item .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.anniversary-send-dialog-item .name {
+    font-size: 12px;
+    color: white;
+    text-align: center;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 聊天中的纪念日卡片消息 */
+.anniversary-card-message {
+    position: relative;
+    width: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.anniversary-card-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.anniversary-card-content {
+    position: relative;
+    z-index: 1;
+    padding: 25px 15px;
+    text-align: center;
+}
+
+.anniversary-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+    margin-bottom: 10px;
+}
+
+.anniversary-card-days {
+    font-size: 56px;
+    font-weight: 200;
+    color: white;
+    line-height: 1;
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
+    letter-spacing: -3px;
+}
+
+.anniversary-card-date {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 12px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 纪念日消息特殊样式 */
+.message.anniversary {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.message.anniversary.user {
+    align-self: flex-end;
+}
+
+.message.anniversary.assistant {
+    align-self: flex-start;
+}
+
+/* 纪念日选择列表样式（用于聊天中发送） */
+.anniversary-select-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.anniversary-select-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.anniversary-select-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.anniversary-select-item:active {
+    transform: scale(0.98);
+}
+
+.anniversary-select-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.anniversary-select-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.anniversary-select-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.anniversary-select-days {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.anniversary-select-days.countdown {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+}
+
+.anniversary-select-days.countup {
+    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    color: white;
+}
+
+.anniversary-select-days .days-text {
+    font-size: 11px;
+    opacity: 0.9;
+}
+
+.anniversary-select-days .days-number {
+    font-size: 18px;
+}
+
+.anniversary-select-days .days-unit {
+    font-size: 11px;
+    opacity: 0.9;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+    .anniversary-hero-days {
+        font-size: 80px;
+    }
+    
+    .anniversary-hero-title {
+        font-size: 18px;
+    }
+    
+    .anniversary-detail-days {
+        font-size: 90px;
+    }
+    
+    .anniversary-detail-title {
+        font-size: 20px;
+    }
+    
+    .anniversary-bg-selector {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .anniversary-action-btn {
+        padding: 10px 15px;
+        min-width: 60px;
+    }
+    
+    .anniversary-card-days {
+        font-size: 48px;
+    }
+    
+    .anniversary-card-message {
+        width: 180px;
+    }
+}
+
+/* ========== 番茄钟应用样式 ========== */
+
+/* 番茄钟容器 */
+.pomodoro-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: linear-gradient(180deg, #E57373 0%, #EF5350 100%);
+}
+
+/* 顶部栏 */
+.pomodoro-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+}
+
+.pomodoro-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: white;
+}
+
+.pomodoro-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pomodoro-header-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pomodoro-header-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* 任务列表 */
+.pomodoro-task-list {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.pomodoro-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: white;
+}
+
+.pomodoro-empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.8;
+}
+
+.pomodoro-empty p {
+    font-size: 16px;
+    margin-bottom: 20px;
+    opacity: 0.9;
+}
+
+.pomodoro-add-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pomodoro-add-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 任务卡片 */
+.pomodoro-task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    margin-bottom: 12px;
+    border-radius: 16px;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.pomodoro-task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.pomodoro-task-info {
+    flex: 1;
+}
+
+.pomodoro-task-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    margin-bottom: 5px;
+}
+
+.pomodoro-task-type {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pomodoro-start-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+}
+
+.pomodoro-start-btn:hover {
+    transform: scale(1.1);
+}
+
+/* 底部导航 */
+.pomodoro-bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 5px;
+    background: white;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.pomodoro-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 5px;
+    transition: all 0.2s ease;
+}
+
+.pomodoro-nav-item.active {
+    color: #E57373;
+}
+
+.pomodoro-nav-icon {
+    font-size: 18px;
+}
+
+.pomodoro-nav-label {
+    font-size: 10px;
+    color: #666;
+}
+
+.pomodoro-nav-item.active .pomodoro-nav-label {
+    color: #E57373;
+}
+
+/* 计时器视图 */
+.pomodoro-timer-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.pomodoro-timer-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.pomodoro-timer-content {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* 励志语 */
+.pomodoro-quote {
+    text-align: center;
+    margin-bottom: 40px;
+    color: white;
+}
+
+.quote-mark {
+    font-size: 36px;
+    font-weight: bold;
+    opacity: 0.6;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.quote-text {
+    font-size: 18px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* 计时器显示 */
+.pomodoro-timer-display {
+    margin-bottom: 30px;
+}
+
+.pomodoro-timer-display span {
+    font-size: 100px;
+    font-weight: 200;
+    color: white;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    letter-spacing: -5px;
+}
+
+/* 任务信息 */
+.pomodoro-timer-task {
+    text-align: center;
+    color: white;
+    margin-bottom: 20px;
+}
+
+.pomodoro-timer-task-title {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.pomodoro-timer-task-status {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* 提示 */
+.pomodoro-timer-hint {
+    background: rgba(0, 80, 80, 0.8);
+    padding: 12px 24px;
+    border-radius: 25px;
+    color: white;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+
+/* 控制按钮 */
+.pomodoro-timer-controls {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pomodoro-control-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.pomodoro-control-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+/* 统计视图 */
+.pomodoro-stats-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: linear-gradient(180deg, #E57373 0%, #EF5350 100%);
+}
+
+.pomodoro-stats-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.pomodoro-stats-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.pomodoro-stats-title {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.pomodoro-stats-value {
+    font-size: 36px;
+    font-weight: 600;
+    color: #E57373;
+    margin-bottom: 5px;
+}
+
+.pomodoro-stats-sub {
+    font-size: 12px;
+    color: #999;
+}
+
+.pomodoro-recent-records {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.pomodoro-recent-records h3 {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.pomodoro-record-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.pomodoro-record-item:last-child {
+    border-bottom: none;
+}
+
+.pomodoro-record-title {
+    flex: 1;
+    font-size: 14px;
+    color: #333;
+}
+
+.pomodoro-record-time {
+    font-size: 14px;
+    font-weight: 600;
+    color: #E57373;
+    margin-right: 10px;
+}
+
+.pomodoro-record-date {
+    font-size: 12px;
+    color: #999;
+}
+
+/* 番茄钟对话框 */
+.pomodoro-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.pomodoro-dialog.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.pomodoro-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.pomodoro-dialog-content {
+    position: relative;
+    width: 90%;
+    max-width: 400px;
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.pomodoro-dialog.visible .pomodoro-dialog-content {
+    transform: translateY(0);
+}
+
+.pomodoro-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.pomodoro-dialog-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 18px;
+}
+
+.pomodoro-dialog-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+}
+
+.pomodoro-dialog-body {
+    margin-bottom: 20px;
+}
+
+.pomodoro-dialog-body .input-group {
+    margin-bottom: 15px;
+}
+
+.pomodoro-dialog-body .input-group label {
+    color: #333;
+}
+
+.pomodoro-dialog-body .input-group input,
+.pomodoro-dialog-body .input-group select {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    color: #333;
+}
+
+.pomodoro-dialog-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.pomodoro-dialog-actions .cancel-btn,
+.pomodoro-dialog-actions .save-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pomodoro-dialog-actions .cancel-btn {
+    background: #f5f5f5;
+    border: none;
+    color: #666;
+}
+
+.pomodoro-dialog-actions .save-btn {
+    background: #E57373;
+    border: none;
+    color: white;
+}
+
+/* 任务选项 */
+.pomodoro-task-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pomodoro-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: #f5f5f5;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pomodoro-option-btn:hover {
+    background: #eee;
+}
+
+.pomodoro-option-btn.danger {
+    color: #E53935;
+}
+
+/* ========== X应用样式 ========== */
+
+/* X容器 */
+.x-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #000;
+}
+
+/* X Logo */
+.x-logo {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* 升级按钮 */
+.x-upgrade-btn {
+    font-size: 14px;
+    color: white;
+    padding: 6px 12px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.x-menu-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+/* 头部头像 */
+.x-header-avatar {
+    position: absolute;
+    left: 50px;
+    top: 12px;
+}
+
+.x-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+/* 标签栏 */
+.x-tab-bar {
+    display: flex;
+    border-bottom: 1px solid #333;
+}
+
+.x-tab {
+    flex: 1;
+    text-align: center;
+    padding: 15px;
+    color: #888;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s ease;
+}
+
+.x-tab:hover {
+    color: #fff;
+}
+
+.x-tab.active {
+    color: #fff;
+}
+
+.x-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: #1d9bf0;
+    border-radius: 3px;
+}
+
+/* Feed */
+.x-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 70px;
+}
+
+/* 帖子卡片 */
+.x-post-card {
+    display: flex;
+    padding: 15px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.x-post-card:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.x-post-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #333;
+    margin-right: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.x-post-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.x-post-avatar span {
+    font-size: 24px;
+}
+
+.x-post-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.x-post-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.x-post-name {
+    font-weight: 700;
+    color: #fff;
+    font-size: 15px;
+}
+
+.x-verified {
+    background: #1d9bf0;
+    color: white;
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 50%;
+}
+
+.x-post-username {
+    color: #888;
+    font-size: 14px;
+}
+
+.x-post-time {
+    color: #888;
+    font-size: 14px;
+}
+
+.x-post-more {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.x-post-more:hover {
+    background: rgba(29, 155, 240, 0.1);
+    color: #1d9bf0;
+}
+
+.x-post-text {
+    color: #fff;
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+}
+
+/* 引用帖子 */
+.x-post-quote {
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.x-quote-content {
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* 帖子图片 */
+.x-post-image {
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.x-post-image img {
+    width: 100%;
+    display: block;
+}
+
+/* 帖子操作 */
+.x-post-actions {
+    display: flex;
+    justify-content: space-between;
+    max-width: 450px;
+}
+
+.x-post-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+}
+
+.x-post-action:hover {
+    background: rgba(29, 155, 240, 0.1);
+    color: #1d9bf0;
+}
+
+.x-post-action span:first-child {
+    font-size: 16px;
+}
+
+/* 发帖按钮 */
+.x-fab {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #1d9bf0;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(29, 155, 240, 0.4);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.x-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(29, 155, 240, 0.5);
+}
+
+/* 底部导航 */
+.x-bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 0;
+    background: #000;
+    border-top: 1px solid #333;
+}
+
+.x-nav-item {
+    position: relative;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+.x-nav-icon {
+    font-size: 24px;
+}
+
+.x-nav-item.active .x-nav-icon {
+    font-weight: bold;
+}
+
+.x-nav-badge {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    background: #1d9bf0;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+/* X对话框 */
+.x-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.x-dialog.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.x-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(91, 112, 131, 0.4);
+}
+
+.x-dialog-content {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    background: #000;
+    border-radius: 0;
+    min-height: 100%;
+}
+
+.x-compose-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.x-compose-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #333;
+}
+
+.x-compose-cancel {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.x-compose-post {
+    background: #fff;
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.x-compose-body {
+    display: flex;
+    padding: 15px;
+    flex: 1;
+}
+
+.x-compose-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #333;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.x-compose-textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    resize: none;
+    min-height: 150px;
+    outline: none;
+}
+
+.x-compose-textarea::placeholder {
+    color: #888;
+}
+
+.x-compose-tools {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border-top: 1px solid #333;
+}
+
+.x-compose-tool {
+    background: none;
+    border: none;
+    color: #1d9bf0;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s ease;
+}
+
+.x-compose-tool:hover {
+    background: rgba(29, 155, 240, 0.1);
+}
+
+.x-reply-original {
+    padding: 15px;
+    border-bottom: 1px solid #333;
+    color: #888;
+    font-size: 14px;
+}
+
+/* 帖子详情 */
+.x-detail-view {
+    background: #000;
+    min-height: 100%;
+}
+
+.x-post-detail {
+    padding: 15px;
+    border-bottom: 1px solid #333;
+}
+
+.x-post-detail-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.x-post-user-info {
+    flex: 1;
+    margin-left: 12px;
+}
+
+.x-follow-btn {
+    background: #fff;
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.x-post-detail-content {
+    margin-bottom: 15px;
+}
+
+.x-post-text-large {
+    color: #fff;
+    font-size: 18px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+.x-post-image-large {
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.x-post-image-large img {
+    width: 100%;
+    display: block;
+}
+
+.x-post-detail-time {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #333;
+}
+
+.x-post-detail-stats {
+    display: flex;
+    gap: 20px;
+    color: #888;
+    font-size: 14px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #333;
+}
+
+.x-post-detail-stats strong {
+    color: #fff;
+}
+
+.x-post-actions-large {
+    justify-content: space-around;
+    padding: 10px 0;
+}
+
+.x-replies-section {
+    padding: 15px;
+}
+
+.x-replies-header {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 15px;
+}
+
+.x-replies-empty {
+    text-align: center;
+    color: #888;
+    padding: 30px;
+}
+
+/* 待办集样式 */
+.pomodoro-tasksets-list {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.pomodoro-taskset-card {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.pomodoro-taskset-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #eee;
+}
+
+.pomodoro-taskset-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.pomodoro-taskset-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.pomodoro-taskset-action {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 5px;
+    color: #666;
+}
+
+.pomodoro-taskset-tasks {
+    padding: 10px;
+}
+
+.pomodoro-taskset-task {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.pomodoro-taskset-task:hover {
+    transform: translateY(-2px);
+}
+
+.pomodoro-taskset-task:last-child {
+    margin-bottom: 0;
+}
+
+.pomodoro-taskset-task-info {
+    flex: 1;
+}
+
+.pomodoro-taskset-task-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.pomodoro-taskset-task-duration {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* 时间轴样式 */
+.pomodoro-timeline {
+    background: linear-gradient(180deg, #E57373 0%, #EF5350 100%);
+    display: flex;
+    flex-direction: column;
+}
+
+.pomodoro-timeline-header {
+    padding: 15px 20px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.pomodoro-timeline-date {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.pomodoro-timeline-month {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.pomodoro-timeline-year {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* 日历样式 */
+.pomodoro-calendar {
+    background: white;
+    margin: 0 15px;
+    border-radius: 12px 12px 0 0;
+    padding: 15px;
+    flex-shrink: 0;
+}
+
+.pomodoro-calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 8px;
+}
+
+.pomodoro-calendar-weekday {
+    text-align: center;
+    font-size: 13px;
+    color: #666;
+    padding: 5px 0;
+}
+
+.pomodoro-calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.pomodoro-calendar-day {
+    width: 100%;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #333;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pomodoro-calendar-day:hover:not(.empty) {
+    background: #f0f0f0;
+}
+
+.pomodoro-calendar-day.empty {
+    color: #ccc;
+}
+
+.pomodoro-calendar-day.next-month {
+    color: #ddd;
+}
+
+.pomodoro-calendar-day.today {
+    background: #E57373;
+    color: white;
+    font-weight: 600;
+    width: 32px;
+    height: 32px;
+    margin: 0 auto;
+}
+
+.pomodoro-calendar-day.has-records {
+    position: relative;
+}
+
+.pomodoro-calendar-day.has-records::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+    background: #E57373;
+    border-radius: 50%;
+}
+
+.pomodoro-calendar-day.today.has-records::after {
+    background: white;
+}
+
+/* 日历工具栏 */
+.pomodoro-calendar-toolbar {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 12px;
+    background: white;
+    margin: 0 15px;
+    border-top: 1px solid #eee;
+    border-radius: 0 0 12px 12px;
+    flex-shrink: 0;
+}
+
+.pomodoro-calendar-tool {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 6px;
+    color: #666;
+}
+
+/* 时间轴记录 */
+.pomodoro-timeline-records {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    min-height: 100px;
+}
+
+.pomodoro-timeline-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.pomodoro-timeline-empty-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}
+
+.pomodoro-timeline-empty p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.pomodoro-timeline-record-list {
+    background: white;
+    border-radius: 12px;
+    padding: 10px;
+}
+
+.pomodoro-timeline-record {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.pomodoro-timeline-record:last-child {
+    border-bottom: none;
+}
+
+.pomodoro-timeline-record-title {
+    font-size: 14px;
+    color: #333;
+}
+
+.pomodoro-timeline-record-time {
+    font-size: 14px;
+    font-weight: 600;
+    color: #E57373;
+}
+
+/* 颜色选择器 */
+.pomodoro-color-picker {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.pomodoro-color-option {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.pomodoro-color-option:hover {
+    transform: scale(1.1);
+}
+
+.pomodoro-color-option.selected {
+    border-color: #333;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+    .pomodoro-timer-display span {
+        font-size: 70px;
+    }
+    
+    .pomodoro-control-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+    
+    .x-post-actions {
+        justify-content: space-between;
+    }
+    
+    .x-post-action span:last-child {
+        display: none;
+    }
+    
+    .pomodoro-timeline-month {
+        font-size: 24px;
+    }
+    
+    .pomodoro-calendar-day {
+        font-size: 13px;
+    }
+}
+
+/* ========== 朋友圈 (Moments) 新样式 ========== */
+
+/* 朋友圈容器 */
+.moments-container {
+    min-height: 100%;
+    background: #f5f5f5;
+}
+
+/* 封面区域 */
+.moments-cover {
+    position: relative;
+    height: 300px;
+    background-size: cover;
+    background-position: center;
+}
+
+.moments-cover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.moments-profile {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.moments-profile-info {
+    text-align: right;
+}
+
+.moments-profile-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.moments-profile-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 10px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.moments-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 动态列表 */
+.moments-feed {
+    padding: 10px;
+    background: #f5f5f5;
+}
+
+.moments-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.moments-empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.moments-empty p {
+    color: #666;
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.moments-empty-hint {
+    color: #999;
+    font-size: 14px;
+}
+
+/* 动态卡片 */
+.moments-card {
+    display: flex;
+    padding: 15px;
+    background: white;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.moments-card-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    background: #eee;
+    margin-right: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    overflow: hidden;
+}
+
+.moments-card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.moments-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.moments-card-header {
+    margin-bottom: 8px;
+}
+
+.moments-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #576b95;
+}
+
+.moments-card-text {
+    font-size: 15px;
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 图片网格 */
+.moments-images {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.moments-images.single {
+    grid-template-columns: 1fr;
+    max-width: 200px;
+}
+
+.moments-images.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 240px;
+}
+
+.moments-images.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 300px;
+}
+
+.moments-image-item {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.moments-image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.moments-image-item:hover img {
+    transform: scale(1.05);
+}
+
+/* 卡片底部 */
+.moments-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.moments-card-time {
+    font-size: 12px;
+    color: #999;
+}
+
+.moments-card-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.moments-action-btn {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.moments-action-btn:hover {
+    background: #f0f0f0;
+}
+
+/* 互动区域 */
+.moments-card-interactions {
+    background: #f7f7f7;
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 10px;
+}
+
+.moments-likes {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.moments-likes-icon {
+    font-size: 12px;
+}
+
+.moments-likes-text {
+    font-size: 13px;
+    color: #576b95;
+    line-height: 1.4;
+}
+
+.moments-comments {
+    border-top: 1px solid #e5e5e5;
+    padding-top: 6px;
+}
+
+.moments-comment {
+    margin-bottom: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.moments-comment-author {
+    color: #576b95;
+    font-weight: 500;
+}
+
+.moments-comment-text {
+    color: #333;
+}
+
+/* 朋友圈对话框 */
+.moments-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.moments-dialog.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.moments-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.moments-dialog-content {
+    position: relative;
+    width: 90%;
+    max-width: 400px;
+    background: white;
+    border-radius: 12px;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.moments-dialog.visible .moments-dialog-content {
+    transform: translateY(0);
+}
+
+.moments-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.moments-dialog-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.moments-dialog-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+}
+
+.moments-dialog-body {
+    padding: 15px;
+}
+
+.moments-dialog-actions {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border-top: 1px solid #eee;
+}
+
+/* 评论对话框 */
+.moments-comment-dialog {
+    max-width: 350px;
+}
+
+.moments-comment-input {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #333;
+    resize: none;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.moments-comment-input:focus {
+    border-color: #576b95;
+}
+
+/* 发布对话框 */
+.moments-compose-dialog {
+    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.moments-compose-dialog .moments-dialog-header {
+    padding: 12px 15px;
+}
+
+.moments-compose-cancel,
+.moments-compose-submit {
+    background: none;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.moments-compose-cancel {
+    color: #333;
+}
+
+.moments-compose-submit {
+    color: #576b95;
+    font-weight: 600;
+}
+
+.moments-compose-body {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.moments-compose-textarea {
+    width: 100%;
+    min-height: 150px;
+    border: none;
+    font-size: 16px;
+    color: #333;
+    resize: none;
+    outline: none;
+    margin-bottom: 15px;
+}
+
+.moments-compose-textarea::placeholder {
+    color: #999;
+}
+
+.moments-compose-images {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.moments-compose-image-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.moments-compose-image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.moments-compose-image-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.moments-compose-tools {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border-top: 1px solid #eee;
+}
+
+.moments-compose-tool {
+    background: #f5f5f5;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #666;
+    cursor: pointer;
+}
+
+.moments-compose-tool:hover {
+    background: #eee;
+}
+
+/* 详情页 */
+.moments-detail {
+    padding: 15px;
+    background: white;
+    min-height: 100%;
+}
+
+.moments-detail-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.moments-detail-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 6px;
+    background: #eee;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+}
+
+.moments-detail-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.moments-detail-info {
+    flex: 1;
+}
+
+.moments-detail-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #576b95;
+    margin-bottom: 4px;
+}
+
+.moments-detail-time {
+    font-size: 13px;
+    color: #999;
+}
+
+.moments-detail-content {
+    margin-bottom: 20px;
+}
+
+.moments-detail-text {
+    font-size: 16px;
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    white-space: pre-wrap;
+}
+
+.moments-detail-images {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.moments-detail-image {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.moments-detail-image img {
+    width: 100%;
+    display: block;
+    cursor: pointer;
+}
+
+.moments-detail-stats {
+    display: flex;
+    gap: 20px;
+    padding: 15px 0;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    color: #666;
+    font-size: 14px;
+}
+
+.moments-detail-actions {
+    display: flex;
+    gap: 15px;
+    padding: 15px 0;
+}
+
+.moments-detail-action-btn {
+    flex: 1;
+    padding: 12px;
+    background: #f5f5f5;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #333;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.moments-detail-action-btn:hover {
+    background: #eee;
+}
+
+.moments-detail-comment-list {
+    margin-top: 20px;
+}
+
+.moments-detail-comment-list h4 {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.moments-detail-comment-item {
+    display: flex;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.moments-detail-comment-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #eee;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.moments-detail-comment-content {
+    flex: 1;
+}
+
+.moments-detail-comment-author {
+    font-size: 14px;
+    font-weight: 500;
+    color: #576b95;
+    margin-bottom: 4px;
+}
+
+.moments-detail-comment-text {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+.moments-detail-comment-time {
+    font-size: 12px;
+    color: #999;
+}
+
+/* 图片预览 */
+.moments-image-preview {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.moments-image-preview.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.moments-image-preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.moments-image-preview-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+}
+
+.moments-image-preview-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    display: block;
+}
+
+.moments-image-preview-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 5001;
+}
+
+/* 头部按钮 */
+.moments-header-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+    .moments-cover {
+        height: 240px;
+    }
+    
+    .moments-profile-avatar {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .moments-images.grid-3 {
+        max-width: 100%;
+    }
+}
+
+/* ========== 查手机模块样式 ========== */
+
+/* 角色选择器 */
+.phone-contact-selector {
+    padding: 20px;
+    min-height: 100%;
+}
+
+.phone-selector-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 30px 20px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+}
+
+.phone-selector-icon {
+    font-size: 64px;
+    margin-bottom: 15px;
+}
+
+.phone-selector-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.phone-selector-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.phone-contact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.phone-contact-item {
+    display: flex;
+    align-items: center;
+    padding: 18px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.phone-contact-item:hover {
+    transform: translateX(8px);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.phone-contact-item:active {
+    transform: scale(0.98);
+}
+
+.phone-contact-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    overflow: hidden;
+}
+
+.phone-contact-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.phone-contact-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.phone-contact-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.phone-contact-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.phone-contact-arrow {
+    font-size: 20px;
+    color: var(--text-secondary);
+    margin-left: 10px;
+}
+
+/* 手机主界面 */
+.phone-home-container {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.phone-wallpaper {
+    position: relative;
+    height: 200px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.phone-wallpaper-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.phone-owner-info {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.phone-owner-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.phone-owner-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.phone-owner-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* 手机应用网格 */
+.phone-app-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    padding: 30px 20px;
+    flex: 1;
+}
+
+.phone-app-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+.phone-app-item:hover {
+    transform: translateY(-5px);
+}
+
+.phone-app-item:active {
+    transform: scale(0.9);
+}
+
+.phone-app-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.phone-app-icon.chat-icon {
+    background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+}
+
+.phone-app-icon.calls-icon {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.phone-app-icon.moments-icon {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.phone-app-icon.diary-icon {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.phone-app-icon.gallery-icon {
+    background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+}
+
+.phone-app-icon.gifts-icon {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.phone-app-name {
+    font-size: 12px;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.phone-app-badge {
+    position: absolute;
+    top: -5px;
+    right: 5px;
+    background: #ff3b30;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+}
+
+.phone-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-top: 1px solid var(--glass-border);
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* 空状态 */
+.phone-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.phone-empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.phone-empty-state p {
+    font-size: 16px;
+}
+
+/* 聊天列表 */
+.phone-chat-list {
+    padding: 10px;
+}
+
+.phone-chat-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 8px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.phone-chat-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.phone-chat-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.phone-chat-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.phone-chat-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.phone-chat-preview {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.phone-chat-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* 聊天详情 - 角色视角 */
+.phone-chat-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.phone-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.phone-emoji-placeholder {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* 朋友圈视图 */
+.phone-moments-container {
+    min-height: 100%;
+    background: #f5f5f5;
+}
+
+.phone-moments-cover {
+    position: relative;
+    height: 220px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.phone-moments-cover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.phone-moments-profile {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.phone-moments-profile-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 10px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.phone-moments-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.phone-moments-profile-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.phone-moments-feed {
+    padding: 10px;
+    background: #f5f5f5;
+}
+
+.phone-moments-card {
+    display: flex;
+    padding: 15px;
+    background: white;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.phone-moments-card-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    background: #eee;
+    margin-right: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    overflow: hidden;
+}
+
+.phone-moments-card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.phone-moments-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.phone-moments-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #576b95;
+    margin-bottom: 8px;
+}
+
+.phone-moments-card-text {
+    font-size: 15px;
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.phone-moments-images {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.phone-moments-images.single {
+    grid-template-columns: 1fr;
+    max-width: 200px;
+}
+
+.phone-moments-images.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 240px;
+}
+
+.phone-moments-images.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 300px;
+}
+
+.phone-moments-image-item {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.phone-moments-image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.phone-moments-card-footer {
+    margin-top: 8px;
+}
+
+.phone-moments-card-time {
+    font-size: 12px;
+    color: #999;
+}
+
+.phone-moments-interactions {
+    background: #f7f7f7;
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 10px;
+}
+
+.phone-moments-likes {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 13px;
+    color: #576b95;
+    margin-bottom: 6px;
+}
+
+.phone-moments-comments {
+    border-top: 1px solid #e5e5e5;
+    padding-top: 6px;
+}
+
+.phone-moments-comment {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.phone-moments-comment-author {
+    color: #576b95;
+    font-weight: 500;
+}
+
+/* 日记视图 */
+.phone-diary-container {
+    min-height: 100%;
+    padding: 15px;
+}
+
+.phone-diary-header {
+    margin-bottom: 20px;
+}
+
+.phone-diary-owner {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+}
+
+.phone-diary-owner-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    overflow: hidden;
+}
+
+.phone-diary-owner-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.phone-diary-owner-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.phone-diary-owner-count {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.phone-diary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.phone-diary-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.phone-diary-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.phone-diary-item-date {
+    width: 50px;
+    text-align: center;
+    margin-right: 15px;
+    padding-right: 15px;
+    border-right: 1px solid var(--glass-border);
+}
+
+.phone-diary-item-day {
+    font-size: 24px;
+    font-weight: 600;
+    color: white;
+    line-height: 1;
+}
+
+.phone-diary-item-month {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.phone-diary-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.phone-diary-item-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.phone-diary-item-mood {
+    font-size: 16px;
+}
+
+.phone-diary-item-preview {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 日记详情 */
+.phone-diary-detail {
+    padding: 20px;
+    min-height: 100%;
+}
+
+.phone-diary-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.phone-diary-detail-date {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.phone-diary-detail-mood {
+    font-size: 14px;
+    color: white;
+    background: var(--glass-bg);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.phone-diary-detail-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 20px;
+}
+
+.phone-diary-detail-content {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 礼物视图 */
+.phone-gifts-container {
+    min-height: 100%;
+    padding: 15px;
+}
+
+.phone-gifts-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    border-radius: 20px;
+}
+
+.phone-gifts-count {
+    text-align: center;
+}
+
+.phone-gifts-count-number {
+    font-size: 48px;
+    font-weight: 200;
+    color: white;
+    display: block;
+    line-height: 1;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.phone-gifts-count-label {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 5px;
+}
+
+.phone-gifts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.phone-gift-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.phone-gift-item:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.phone-gift-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.phone-gift-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.phone-gift-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* 通话记录列表 */
+.phone-calls-list {
+    padding: 10px;
+}
+
+.phone-call-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 8px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    transition: all 0.3s ease;
+}
+
+.phone-call-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.phone-call-icon {
+    font-size: 24px;
+    margin-right: 15px;
+}
+
+.phone-call-icon.missed {
+    color: #ff3b30;
+}
+
+.phone-call-info {
+    flex: 1;
+}
+
+.phone-call-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.phone-call-name.missed {
+    color: #ff3b30;
+}
+
+.phone-call-type {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.phone-call-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* 相册 */
+.phone-gallery-container {
+    min-height: 100%;
+    padding: 15px;
+}
+
+.phone-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.phone-album-card {
+    background: var(--glass-bg);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid var(--glass-border);
+}
+
+.phone-album-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.phone-album-cover {
+    aspect-ratio: 1;
+    overflow: hidden;
+}
+
+.phone-album-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.phone-album-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #ccc;
+}
+
+.phone-album-info {
+    padding: 12px;
+}
+
+.phone-album-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.phone-album-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.phone-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 15px;
+}
+
+.phone-photo-item {
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+.phone-photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+    .phone-app-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        padding: 20px 15px;
+    }
+    
+    .phone-app-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+    
+    .phone-owner-avatar {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .phone-gifts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .phone-moments-cover {
+        height: 180px;
+    }
+    
+    .phone-moments-profile-avatar {
+        width: 60px;
+        height: 60px;
+    }
+}
+
+/* ========== 相册应用样式 ========== */
+
+.photos-container {
+    min-height: 100%;
+}
+
+.album-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.album-card {
+    transition: all 0.3s ease;
+}
+
+.album-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.album-card:active {
+    transform: scale(0.98);
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.photo-item {
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.photo-item img {
+    transition: transform 0.3s ease;
+}
+
+.photo-item:hover img {
+    transform: scale(1.1);
+}
+
+/* 照片查看器 */
+.photo-viewer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.photo-viewer.visible {
+    opacity: 1;
+}
+
+.photo-viewer-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+}
+
+.photo-viewer-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-viewer-image-container {
+    max-width: 90%;
+    max-height: 80%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-viewer-image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.photo-viewer-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    z-index: 5001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.photo-viewer-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.photo-viewer-prev,
+.photo-viewer-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    z-index: 5001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.photo-viewer-prev {
+    left: 20px;
+}
+
+.photo-viewer-next {
+    right: 20px;
+}
+
+.photo-viewer-prev:hover,
+.photo-viewer-next:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.photo-viewer-prev.hidden,
+.photo-viewer-next.hidden {
+    display: none;
+}
+
+.photo-viewer-info {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 25px;
+}
+
+.photo-viewer-counter {
+    color: white;
+    font-size: 14px;
+}
+
+.photo-viewer-delete {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* 相册对话框 */
+.photos-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.photos-dialog.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.photos-dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.photos-dialog-content {
+    position: relative;
+    width: 90%;
+    max-width: 400px;
+    background: rgba(40, 40, 40, 0.98);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.photos-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.photos-dialog-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 18px;
+}
+
+.photos-dialog-header .close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.photos-dialog-body {
+    margin-bottom: 20px;
+}
+
+.photos-dialog-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* ========== 浏览器应用样式 ========== */
+
+.browser-container {
+    min-height: 100%;
+}
+
+.quick-link {
+    transition: transform 0.2s ease;
+}
+
+.quick-link:hover {
+    transform: translateY(-3px);
+}
+
+.quick-link:active {
+    transform: scale(0.95);
+}
+
+.browser-view {
+    height: 100%;
+}
+
+.browser-view iframe {
+    background: white;
+}
+
+.bookmark-item {
+    transition: all 0.3s ease;
+}
+
+.bookmark-item:hover {
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.history-item {
+    transition: background 0.2s ease;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ========== 备忘录应用样式 ========== */
+
+.notes-container {
+    min-height: 100%;
+}
+
+.note-card {
+    transition: all 0.3s ease;
+}
+
+.note-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.note-card:active {
+    transform: scale(0.98);
+}
+
+.category-tab {
+    transition: all 0.2s ease;
+}
+
+.category-tab:hover {
+    opacity: 0.8;
+}
+
+.category-tab.active {
+    font-weight: bold;
+}
+
+.category-select {
+    transition: all 0.2s ease;
+}
+
+.category-select:hover {
+    opacity: 0.8;
+}
+
+.category-select.selected {
+    font-weight: bold;
+}
+
+.note-view {
+    line-height: 1.8;
+}
+
+.note-edit textarea {
+    font-family: var(--custom-font);
+}
+
+/* ========== 商城电商风格样式 ========== */
+
+.store-container {
+    background: #f5f5f5;
+}
+
+.store-category-btn {
+    transition: all 0.2s ease;
+}
+
+.store-category-btn:hover {
+    opacity: 0.8;
+}
+
+.product-card {
+    transition: all 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.product-card:active {
+    transform: scale(0.98);
+}
+
+.product-detail {
+    background: #f5f5f5;
+}
+
+.cart-item {
+    transition: all 0.3s ease;
+}
+
+.cart-item:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.qty-btn {
+    transition: all 0.2s ease;
+}
+
+.qty-btn:hover {
+    background: #f0f0f0;
+    border-color: #ccc;
+}
+
+.qty-btn:active {
+    transform: scale(0.9);
+}
+
+.hot-keyword {
+    transition: all 0.2s ease;
+}
+
+.hot-keyword:hover {
+    background: #f5f5f5;
+    border-color: #FF6B6B;
+    color: #FF6B6B;
+}
+
+/* ========== 商品分享消息样式 ========== */
+
+.product-share-message {
+    display: flex;
+    background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+    border: 1px solid #ffe0e0;
+    border-radius: 12px;
+    padding: 12px;
+    max-width: 240px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.product-share-message:hover {
+    box-shadow: 0 4px 12px rgba(255, 100, 100, 0.15);
+    transform: translateY(-2px);
+}
+
+.product-share-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.product-share-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.product-share-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-share-info {
+    flex: 1;
+    margin-left: 12px;
+    overflow: hidden;
+}
+
+.product-share-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.product-share-price {
+    font-size: 16px;
+    font-weight: bold;
+    color: #FF6B6B;
+    margin-bottom: 4px;
+}
+
+.product-share-desc {
+    font-size: 12px;
+    color: #999;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* ========== 链接分享消息样式 ========== */
+
+.link-share-message {
+    display: flex;
+    background: linear-gradient(135deg, #f0f7ff 0%, #fff 100%);
+    border: 1px solid #d0e5ff;
+    border-radius: 12px;
+    padding: 12px;
+    max-width: 260px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.link-share-message:hover {
+    box-shadow: 0 4px 12px rgba(100, 150, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.link-share-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #4A90D9 0%, #67B8DE 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    color: white;
+}
+
+.link-share-info {
+    flex: 1;
+    margin-left: 12px;
+    overflow: hidden;
+}
+
+.link-share-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.link-share-desc {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.link-share-url {
+    font-size: 11px;
+    color: #4A90D9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ========== 备忘录消息样式 ========== */
+
+.note-share-message {
+    background: linear-gradient(135deg, #fffbeb 0%, #fff 100%);
+    border: 1px solid #ffeaa7;
+    border-radius: 12px;
+    padding: 12px;
+    max-width: 240px;
+}
+
+.note-share-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #ffeaa7;
+}
+
+.note-share-icon {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #FDCB6E 0%, #F39C12 100%);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.note-share-title {
+    flex: 1;
+    margin-left: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #B7791F;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-share-content {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* 商品/链接/备忘消息特殊样式 */
+.message.product,
+.message.link,
+.message.note {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.message.product.user,
+.message.link.user,
+.message.note.user {
+    align-self: flex-end;
+}
+
+.message.product.assistant,
+.message.link.assistant,
+.message.note.assistant {
+    align-self: flex-start;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+    .album-grid {
+        gap: 10px;
+    }
+    
+    .photo-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+    }
+    
+    .photo-viewer-prev,
+    .photo-viewer-next {
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+    }
+    
+    .photo-viewer-close {
+        width: 36px;
+        height: 36px;
+        font-size: 22px;
+    }
+    
+    .product-share-message,
+    .link-share-message,
+    .note-share-message {
+        max-width: 200px;
+    }
 }

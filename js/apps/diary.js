@@ -7,7 +7,6 @@ import { generateId, formatDate, showToast, getMoodEmoji, getDefaultSystemPrompt
 import { Logger, LOG_TYPES } from '../logger.js';
 
 let container, headerActions;
-let currentTab = 'traditional'; // 'traditional' | 'exchange'
 
 export async function init(target, actions) {
     container = target;
@@ -15,9 +14,9 @@ export async function init(target, actions) {
     renderDiaryHome();
 }
 
-// 渲染日记主页（带标签切换）
+// 渲染日记主页 (仅交换日记)
 async function renderDiaryHome() {
-    window.lnChat.appTitle.textContent = '日记';
+    window.lnChat.appTitle.textContent = '交换日记';
     
     // 右上角添加新建交换日记按钮
     headerActions.innerHTML = `
@@ -25,58 +24,12 @@ async function renderDiaryHome() {
     `;
     document.getElementById('add-exchange-diary-btn').onclick = () => showExchangeDiaryCreator();
     
-    // 渲染标签栏和内容
+    // 渲染内容
     container.innerHTML = `
-        <div id="diary-content" style="height: calc(100% - 50px); overflow-y: auto;"></div>
-        <div class="tab-bar" style="height: 50px; display: flex; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); position: absolute; bottom: 0; width: 100%;">
-            <div class="tab-item" id="tab-traditional" style="flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s;">
-                <span style="font-size: 14px;">📔 传统日记</span>
-            </div>
-            <div class="tab-item" id="tab-exchange" style="flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s;">
-                <span style="font-size: 14px;">📝 交换日记</span>
-            </div>
-        </div>
+        <div id="diary-content" style="height: 100%; overflow-y: auto;"></div>
     `;
     
-    const updateTabStyles = () => {
-        const traditionalTab = document.getElementById('tab-traditional');
-        const exchangeTab = document.getElementById('tab-exchange');
-        
-        if (currentTab === 'traditional') {
-            traditionalTab.style.color = 'var(--primary-color)';
-            traditionalTab.style.fontWeight = 'bold';
-            exchangeTab.style.color = 'var(--text-secondary)';
-            exchangeTab.style.fontWeight = 'normal';
-        } else {
-            traditionalTab.style.color = 'var(--text-secondary)';
-            traditionalTab.style.fontWeight = 'normal';
-            exchangeTab.style.color = 'var(--primary-color)';
-            exchangeTab.style.fontWeight = 'bold';
-        }
-    };
-    
-    document.getElementById('tab-traditional').onclick = () => {
-        currentTab = 'traditional';
-        updateTabStyles();
-        renderCurrentTab();
-    };
-    document.getElementById('tab-exchange').onclick = () => {
-        currentTab = 'exchange';
-        updateTabStyles();
-        renderCurrentTab();
-    };
-    
-    updateTabStyles();
-    renderCurrentTab();
-}
-
-async function renderCurrentTab() {
-    const content = document.getElementById('diary-content');
-    if (currentTab === 'traditional') {
-        await renderList(content);
-    } else {
-        await renderExchangeDiaryList(content);
-    }
+    await renderExchangeDiaryList(document.getElementById('diary-content'));
 }
 
 async function renderList(target) {
@@ -1004,7 +957,6 @@ async function renderExchangeDiaryDetail(diaryId) {
     const originalBack = window.lnChat.backBtn.onclick;
     window.lnChat.backBtn.onclick = () => {
         window.lnChat.backBtn.onclick = originalBack;
-        currentTab = 'exchange';
         renderDiaryHome();
     };
     
@@ -1022,7 +974,6 @@ async function renderExchangeDiaryDetail(diaryId) {
             await db.delete(STORES.EXCHANGE_DIARIES, diaryId);
             showToast('已删除');
             window.lnChat.backBtn.onclick = originalBack;
-            currentTab = 'exchange';
             renderDiaryHome();
         }
     };
@@ -1169,7 +1120,6 @@ async function renderExchangeDiaryDetailAndTriggerAI(diaryId) {
     const originalBack = window.lnChat.backBtn.onclick;
     window.lnChat.backBtn.onclick = () => {
         window.lnChat.backBtn.onclick = originalBack;
-        currentTab = 'exchange';
         renderDiaryHome();
     };
     
@@ -1185,7 +1135,6 @@ async function renderExchangeDiaryDetailAndTriggerAI(diaryId) {
             await db.delete(STORES.EXCHANGE_DIARIES, diaryId);
             showToast('已删除');
             window.lnChat.backBtn.onclick = originalBack;
-            currentTab = 'exchange';
             renderDiaryHome();
         }
     };

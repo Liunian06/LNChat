@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'LNChatDB';
-const DB_VERSION = 8;
+const DB_VERSION = 12;
 
 export const STORES = {
     CONTACTS: 'contacts',
@@ -19,7 +19,17 @@ export const STORES = {
     EXCHANGE_DIARIES: 'exchange_diaries',
     EXCHANGE_DIARY_ENTRIES: 'exchange_diary_entries',
     EMOJI_LIBRARIES: 'emoji_libraries',
-    EMOJIS: 'emojis'
+    EMOJIS: 'emojis',
+    WALLET: 'wallet',
+    TRANSACTIONS: 'transactions',
+    STORE_ITEMS: 'store_items',
+    PURCHASES: 'purchases',
+    GIFTS: 'gifts',
+    ANNIVERSARIES: 'anniversaries',
+    POMODORO_TASKS: 'pomodoro_tasks',
+    POMODORO_RECORDS: 'pomodoro_records',
+    X_POSTS: 'x_posts',
+    X_USERS: 'x_users'
 };
 
 class LNChatDB {
@@ -130,6 +140,72 @@ class LNChatDB {
                 if (!db.objectStoreNames.contains(STORES.EMOJIS)) {
                     const emojiStore = db.createObjectStore(STORES.EMOJIS, { keyPath: 'id' });
                     emojiStore.createIndex('libraryId', 'libraryId', { unique: false });
+                }
+
+                // 钱包存储
+                if (!db.objectStoreNames.contains(STORES.WALLET)) {
+                    db.createObjectStore(STORES.WALLET, { keyPath: 'id' });
+                }
+
+                // 交易记录存储
+                if (!db.objectStoreNames.contains(STORES.TRANSACTIONS)) {
+                    const transactionStore = db.createObjectStore(STORES.TRANSACTIONS, { keyPath: 'id' });
+                    transactionStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    transactionStore.createIndex('type', 'type', { unique: false });
+                }
+
+                // 商城商品存储
+                if (!db.objectStoreNames.contains(STORES.STORE_ITEMS)) {
+                    const storeItemStore = db.createObjectStore(STORES.STORE_ITEMS, { keyPath: 'id' });
+                    storeItemStore.createIndex('category', 'category', { unique: false });
+                }
+
+                // 购买记录存储
+                if (!db.objectStoreNames.contains(STORES.PURCHASES)) {
+                    const purchaseStore = db.createObjectStore(STORES.PURCHASES, { keyPath: 'id' });
+                    purchaseStore.createIndex('itemId', 'itemId', { unique: false });
+                    purchaseStore.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+
+                // 礼物记录存储
+                if (!db.objectStoreNames.contains(STORES.GIFTS)) {
+                    const giftStore = db.createObjectStore(STORES.GIFTS, { keyPath: 'id' });
+                    giftStore.createIndex('contactId', 'contactId', { unique: false });
+                    giftStore.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+
+                // 纪念日存储
+                if (!db.objectStoreNames.contains(STORES.ANNIVERSARIES)) {
+                    const anniversaryStore = db.createObjectStore(STORES.ANNIVERSARIES, { keyPath: 'id' });
+                    anniversaryStore.createIndex('targetDate', 'targetDate', { unique: false });
+                    anniversaryStore.createIndex('type', 'type', { unique: false }); // 'countdown' 或 'countup'
+                }
+
+                // 番茄钟任务存储
+                if (!db.objectStoreNames.contains(STORES.POMODORO_TASKS)) {
+                    const pomodoroTaskStore = db.createObjectStore(STORES.POMODORO_TASKS, { keyPath: 'id' });
+                    pomodoroTaskStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    pomodoroTaskStore.createIndex('status', 'status', { unique: false }); // 'active', 'completed', 'archived'
+                }
+
+                // 番茄钟记录存储
+                if (!db.objectStoreNames.contains(STORES.POMODORO_RECORDS)) {
+                    const pomodoroRecordStore = db.createObjectStore(STORES.POMODORO_RECORDS, { keyPath: 'id' });
+                    pomodoroRecordStore.createIndex('taskId', 'taskId', { unique: false });
+                    pomodoroRecordStore.createIndex('date', 'date', { unique: false });
+                }
+
+                // X应用帖子存储
+                if (!db.objectStoreNames.contains(STORES.X_POSTS)) {
+                    const xPostStore = db.createObjectStore(STORES.X_POSTS, { keyPath: 'id' });
+                    xPostStore.createIndex('userId', 'userId', { unique: false });
+                    xPostStore.createIndex('createdAt', 'createdAt', { unique: false });
+                }
+
+                // X应用用户存储
+                if (!db.objectStoreNames.contains(STORES.X_USERS)) {
+                    const xUserStore = db.createObjectStore(STORES.X_USERS, { keyPath: 'id' });
+                    xUserStore.createIndex('username', 'username', { unique: true });
                 }
             };
 

@@ -12,6 +12,13 @@ const APPS = [
     { id: 'diary', name: '日记', icon: '📔' },
     { id: 'moments', name: '朋友圈', icon: '🌟' },
     { id: 'memory', name: '记忆', icon: '🧠' },
+    { id: 'anniversary', name: '纪念日', icon: '📅' },
+    { id: 'pomodoro', name: '番茄钟', icon: '🍅' },
+    { id: 'phone', name: '查手机', icon: '📱' },
+    { id: 'photos', name: '相册', icon: '🖼️' },
+    { id: 'browser', name: '浏览器', icon: '🌐' },
+    { id: 'notes', name: '备忘录', icon: '📝' },
+    { id: 'xapp', name: 'X', icon: '𝕏' },
     { id: 'emoji', name: '表情库', icon: '😊' },
     { id: 'wallet', name: '钱包', icon: '💳' },
     { id: 'store', name: '商城', icon: '🛒' },
@@ -117,12 +124,7 @@ class LNChatSystem {
 
         // 动态加载应用模块
         try {
-            let module;
-            if (['wallet', 'store'].includes(appId)) {
-                module = await import(`./apps/placeholder.js`);
-            } else {
-                module = await import(`./apps/${appId}.js`);
-            }
+            const module = await import(`./apps/${appId}.js`);
             
             this.currentModule = module; // 保存当前模块引用
             
@@ -210,10 +212,46 @@ class LNChatSystem {
             const useBing = settings ? (settings.bingWallpaper !== false) : true; // 默认为 true
 
             if (useBing) {
-                const response = await fetch('https://bing.biturl.top/?resolution=1920&index=0&mkt=zh-CN');
-                const data = await response.json();
-                if (data.url) {
-                    wallpaper.style.backgroundImage = `url(${data.url})`;
+                // 获取今天的日期字符串 (YYYY-MM-DD)
+                const today = new Date().toISOString().split('T')[0];
+                
+                // 检查数据库中是否有今天的Bing壁纸缓存
+                const cachedWallpaper = await db.get(STORES.IMAGES, 'bing_wallpaper');
+                
+                if (cachedWallpaper && cachedWallpaper.date === today && cachedWallpaper.blob) {
+                    // 使用缓存的壁纸
+                    const url = URL.createObjectURL(cachedWallpaper.blob);
+                    wallpaper.style.backgroundImage = `url(${url})`;
+                    console.log('使用缓存的Bing壁纸');
+                } else {
+                    // 从API获取新壁纸
+                    const response = await fetch('https://bing.biturl.top/?resolution=1920&index=0&mkt=zh-CN');
+                    const data = await response.json();
+                    
+                    if (data.url) {
+                        try {
+                            // 下载壁纸图片并缓存到本地
+                            const imgResponse = await fetch(data.url);
+                            const blob = await imgResponse.blob();
+                            
+                            // 保存到数据库（覆盖旧的缓存，只保留一天的数据）
+                            await db.put(STORES.IMAGES, {
+                                id: 'bing_wallpaper',
+                                date: today,
+                                blob: blob,
+                                originalUrl: data.url
+                            });
+                            
+                            // 使用本地缓存的图片设置壁纸
+                            const url = URL.createObjectURL(blob);
+                            wallpaper.style.backgroundImage = `url(${url})`;
+                            console.log('已从Bing获取新壁纸并缓存到本地');
+                        } catch (downloadError) {
+                            // 如果下载失败，直接使用在线URL
+                            console.warn('壁纸下载失败，使用在线URL:', downloadError);
+                            wallpaper.style.backgroundImage = `url(${data.url})`;
+                        }
+                    }
                 }
             } else {
                 // 尝试加载自定义壁纸
