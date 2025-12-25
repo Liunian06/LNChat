@@ -97,6 +97,7 @@ async function renderApiSettings() {
     if (!settings.mainPresetId) settings.mainPresetId = settings.presets[0].id;
     if (!settings.funcPresetId) settings.funcPresetId = 'same_as_main'; // 特殊值：跟随主API
     if (!settings.exchangeDiaryPresetId) settings.exchangeDiaryPresetId = 'same_as_main'; // 交换日记API
+    if (!settings.groupChatPresetId) settings.groupChatPresetId = 'same_as_main'; // 群聊API
 
     // 当前正在编辑的预设
     let editingPreset = settings.presets.find(p => p.id === settings.activePresetId) || settings.presets[0];
@@ -105,6 +106,7 @@ async function renderApiSettings() {
         const mainPresetName = settings.presets.find(p => p.id === settings.mainPresetId)?.name || '未知预设';
         const funcPresetName = settings.funcPresetId === 'same_as_main' ? '跟随主 API' : (settings.presets.find(p => p.id === settings.funcPresetId)?.name || '未知预设');
         const exchangeDiaryPresetName = settings.exchangeDiaryPresetId === 'same_as_main' ? '跟随主 API' : (settings.presets.find(p => p.id === settings.exchangeDiaryPresetId)?.name || '未知预设');
+        const groupChatPresetName = settings.groupChatPresetId === 'same_as_main' ? '跟随主 API' : (settings.presets.find(p => p.id === settings.groupChatPresetId)?.name || '未知预设');
 
         container.innerHTML = `
             <div class="settings-container" style="padding: 20px">
@@ -170,6 +172,27 @@ async function renderApiSettings() {
                             </div>
                         </div>
                         <p style="font-size:12px; color:var(--text-secondary); margin-top:5px">用于交换日记功能的专用接口（可独立设置高质量模型）</p>
+                    </div>
+
+                    <div class="input-group">
+                        <label>👥 群聊 API</label>
+                        <div style="position:relative;">
+                            <div id="group-chat-preset-trigger" style="padding:14px; border:1px solid var(--glass-border); background:rgba(255, 255, 255, 0.08); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <span>${groupChatPresetName}</span>
+                                <span style="font-size:12px; opacity:0.7">▼</span>
+                            </div>
+                            <div id="group-chat-preset-list" style="position:absolute; top:100%; left:0; right:0; z-index:101; margin-top:5px; max-height:200px; overflow-y:auto; display:none; background:rgba(30,30,30,0.95); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:14px; border:1px solid var(--glass-border); box-shadow:var(--shadow);">
+                                <div class="group-chat-preset-option" data-id="same_as_main" style="padding:12px 15px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px; color:white; ${settings.groupChatPresetId === 'same_as_main' ? 'background:rgba(255,255,255,0.1);' : ''}">
+                                    跟随主 API
+                                </div>
+                                ${settings.presets.map(p => `
+                                    <div class="group-chat-preset-option" data-id="${p.id}" style="padding:12px 15px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px; color:white; ${p.id === settings.groupChatPresetId ? 'background:rgba(255,255,255,0.1);' : ''}">
+                                        ${p.name}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <p style="font-size:12px; color:var(--text-secondary); margin-top:5px">用于群聊功能的专用接口</p>
                     </div>
                 </section>
 
@@ -265,7 +288,19 @@ async function renderApiSettings() {
             };
         });
 
-        // 4. 编辑预设下拉
+        // 4. 群聊 API 下拉
+        const groupChatTrigger = document.getElementById('group-chat-preset-trigger');
+        const groupChatList = document.getElementById('group-chat-preset-list');
+        setupDropdown(groupChatTrigger, groupChatList);
+        groupChatList.querySelectorAll('.group-chat-preset-option').forEach(item => {
+            item.onclick = async () => {
+                settings.groupChatPresetId = item.dataset.id;
+                await db.put(STORES.SETTINGS, { key: 'ai_settings', ...settings });
+                renderUI();
+            };
+        });
+
+        // 5. 编辑预设下拉
         const editTrigger = document.getElementById('preset-dropdown-trigger');
         const editList = document.getElementById('preset-list-container');
         setupDropdown(editTrigger, editList);
@@ -283,7 +318,7 @@ async function renderApiSettings() {
             trigger.onclick = (e) => {
                 e.stopPropagation();
                 // 关闭其他打开的下拉框
-                [mainList, funcList, exchangeDiaryList, editList].forEach(l => {
+                [mainList, funcList, exchangeDiaryList, groupChatList, editList].forEach(l => {
                     if (l !== list) l.style.display = 'none';
                 });
                 list.style.display = list.style.display === 'none' ? 'block' : 'none';
@@ -292,7 +327,7 @@ async function renderApiSettings() {
 
         // 点击空白处关闭所有下拉框
         document.addEventListener('click', () => {
-            [mainList, funcList, exchangeDiaryList, editList].forEach(l => {
+            [mainList, funcList, exchangeDiaryList, groupChatList, editList].forEach(l => {
                 if (l) l.style.display = 'none';
             });
         }, { once: true });
@@ -328,6 +363,7 @@ async function renderApiSettings() {
             if (settings.mainPresetId === editingPreset.id) settings.mainPresetId = settings.presets.find(p => p.id !== editingPreset.id).id;
             if (settings.funcPresetId === editingPreset.id) settings.funcPresetId = 'same_as_main';
             if (settings.exchangeDiaryPresetId === editingPreset.id) settings.exchangeDiaryPresetId = 'same_as_main';
+            if (settings.groupChatPresetId === editingPreset.id) settings.groupChatPresetId = 'same_as_main';
 
             settings.presets = settings.presets.filter(p => p.id !== editingPreset.id);
             settings.activePresetId = settings.presets[0].id;
@@ -2313,6 +2349,7 @@ async function getSettings() {
         mainPresetId: 'default',
         funcPresetId: 'same_as_main',
         exchangeDiaryPresetId: 'same_as_main',
+        groupChatPresetId: 'same_as_main',
         presets: [
             {
                 id: 'default',
@@ -2352,6 +2389,7 @@ async function getSettings() {
         };
         return {
             ...defaultSettings,
+            groupChatPresetId: 'same_as_main',
             presets: [oldPreset],
             systemPrompt: s.systemPrompt || await getDefaultSystemPrompt(),
             contextCount: s.contextCount || 2000,
@@ -2379,6 +2417,7 @@ async function getSettings() {
     if (s.forecastDays === undefined) s.forecastDays = 3;
     if (s.includeBattery === undefined) s.includeBattery = true;
     if (s.manualLocation === undefined) s.manualLocation = '';
+    if (s.groupChatPresetId === undefined) s.groupChatPresetId = 'same_as_main';
     
     // 气泡设置默认值
     if (!s.bubbleSettings) {

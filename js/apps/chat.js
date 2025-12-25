@@ -2501,6 +2501,38 @@ async function processGroupMemberResponse(session, targetContact) {
             }
         }
 
+        // 系统信息 (时间、位置等)
+        const now = new Date();
+        let systemInfo = '';
+        
+        if (settings.includeDate !== false) {
+             const dateStr = formatDate(now);
+             systemInfo += `当前日期为：${dateStr}\n`;
+        }
+        
+        if (settings.includeTime !== false) {
+             const timeStr = now.toTimeString().split(' ')[0];
+             systemInfo += `当前时间为：${timeStr}\n`;
+        }
+
+        if (settings.includeLocation) {
+             const city = await getLocation();
+             if (city) {
+                 systemInfo += `用户当前定位：${city}\n`;
+
+                 if (settings.includeWeather) {
+                     const weather = await getWeather(city);
+                     if (weather) {
+                         systemInfo += `当前天气：${weather.temperature}, ${weather.description}, 风速 ${weather.wind}\n`;
+                     }
+                 }
+             }
+        }
+
+        if (systemInfo) {
+            systemContent += `\n## 环境信息\n${systemInfo.trim()}\n`;
+        }
+
         // 构建消息历史
         const apiMessages = [{ role: 'system', content: systemContent }];
         
