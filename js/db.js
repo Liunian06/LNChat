@@ -220,13 +220,47 @@ class LNChatDB {
         });
     }
 
+    async base64ToBlob(base64) {
+        const parts = base64.split(';base64,');
+        const contentType = parts[0].split(':')[1];
+        const raw = window.atob(parts[1]);
+        const rawLength = raw.length;
+        const uInt8Array = new Uint8Array(rawLength);
+        for (let i = 0; i < rawLength; ++i) {
+            uInt8Array[i] = raw.charCodeAt(i);
+        }
+        return new Blob([uInt8Array], { type: contentType });
+    }
+
+    async migrateEmojis() {
+        try {
+            const emojis = await this.getAll(STORES.EMOJIS);
+            let count = 0;
+            for (const emoji of emojis) {
+                if (typeof emoji.imageData === 'string' && emoji.imageData.startsWith('data:image')) {
+                    try {
+                        const blob = await this.base64ToBlob(emoji.imageData);
+                        emoji.imageData = blob;
+                        await this.put(STORES.EMOJIS, emoji);
+                        count++;
+                    } catch (e) {
+                        console.error('Migration failed for emoji:', emoji.id, e);
+                    }
+                }
+            }
+            if (count > 0) console.log(`Migrated ${count} emojis to Blob format.`);
+        } catch (e) {
+            console.error('Emoji migration error:', e);
+        }
+    }
+
     // 通用增删改查方法
-    async getAll(storeName) {
+    async getAll(storeName, count = null) {
         await this.init();
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(storeName, 'readonly');
             const store = transaction.objectStore(storeName);
-            const request = store.getAll();
+            const request = count ? store.getAll(null, count) : store.getAll();
 
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
@@ -281,21 +315,72 @@ class LNChatDB {
         });
     }
 
-    // 特殊查询：根据会话ID获取聊天记录
-    async getChatHistory(chatId, onlyNormal = false) {
+    // 特殊查询：根据会话ID获取聊天记录 (支持分页)
+    // limit: 获取数量
+    // beforeId: 获取该ID之前的消息（用于向上加载更多）
+    async getChatHistory(chatId, limit = null, beforeId = null) {
         await this.init();
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(STORES.CHAT_HISTORY, 'readonly');
             const store = transaction.objectStore(STORES.CHAT_HISTORY);
             const index = store.index('chatId');
-            const request = index.getAll(chatId);
+            
+            // 如果不需要分页，使用原生 getAll (兼容旧逻辑，但建议逐步废弃无限制查询)
+            if (!limit && !beforeId) {
+                const request = index.getAll(chatId);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+                return;
+            }
 
-            request.onsuccess = () => {
-                let history = request.result;
-                if (onlyNormal) {
-                    history = history.filter(m => m.status === 'normal');
+            const range = IDBKeyRange.only(chatId);
+            const request = index.openCursor(range, 'prev'); // 倒序查询：最新的在最前
+            const results = [];
+            let skipped = false;
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (!cursor) {
+                    resolve(results.reverse()); // 返回时按时间正序
+                    return;
                 }
-                resolve(history);
+
+                const msg = cursor.value;
+
+                // 如果指定了 beforeId，先跳过直到找到该 ID
+                if (beforeId && !skipped) {
+                    if (msg.id === beforeId) {
+                        skipped = true;
+                        cursor.continue(); // 跳过基准消息本身
+                    } else {
+                        // 还在找 beforeId，或者当前消息比 beforeId 更新（id更大），继续找
+                        // 注意：这里 id 是自增的，prev 顺序 id 递减
+                        // 如果当前 msg.id > beforeId，说明是更晚的消息，跳过
+                        if (msg.id > beforeId) {
+                             cursor.continue();
+                        } else {
+                             // 理论上不会直接跳到 < beforeId 除非 beforeId 不存在
+                             // 如果找不到 beforeId，这个逻辑可能会失效。
+                             // 简单处理：一旦遇到 <= beforeId 的情况就视为找到（如果 == 则在上面分支处理了）
+                             skipped = true;
+                             results.push(msg);
+                             if (limit && results.length >= limit) {
+                                 resolve(results.reverse());
+                                 return;
+                             }
+                             cursor.continue();
+                        }
+                    }
+                    return;
+                }
+
+                results.push(msg);
+
+                if (limit && results.length >= limit) {
+                    resolve(results.reverse());
+                } else {
+                    cursor.continue();
+                }
             };
             request.onerror = () => reject(request.error);
         });

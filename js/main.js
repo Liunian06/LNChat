@@ -41,6 +41,9 @@ class LNChatSystem {
         // 初始化数据库
         await db.init();
         
+        // 异步迁移数据 (不阻塞启动)
+        setTimeout(() => db.migrateEmojis(), 2000);
+
         // 渲染应用图标
         this.renderAppGrid();
         

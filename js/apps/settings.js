@@ -227,7 +227,9 @@ async function renderApiSettings() {
 
                     <div class="input-group">
                         <label>API URL</label>
-                        <input type="text" id="api-url" value="${editingPreset.apiUrl}">
+                        <input type="text" id="api-url" value="${editingPreset.apiUrl}" placeholder="https://api.siliconflow.cn/v1/chat/completions">
+                        <p id="api-url-preview" style="font-size:12px; color:var(--text-secondary); margin-top:5px; display:none;">预览：<span id="api-url-preview-text" style="color:#4CAF50;"></span></p>
+                        <p id="api-url-hint" style="font-size:12px; color:var(--text-secondary); margin-top:5px">支持输入短 URL（如 https://api.siliconflow.cn），保存时自动补全</p>
                     </div>
                     <div class="input-group">
                         <label>API Key</label>
@@ -373,9 +375,72 @@ async function renderApiSettings() {
             showToast('预设已删除');
         };
 
+        // URL 自动补全函数
+        const normalizeApiUrl = (url) => {
+            if (!url) return url;
+            url = url.trim();
+            
+            // 如果已经是完整的 chat/completions 路径，直接返回
+            if (url.endsWith('/chat/completions')) {
+                return url;
+            }
+            
+            // 移除末尾的斜杠
+            url = url.replace(/\/+$/, '');
+            
+            // 检查各种情况并补全
+            if (url.endsWith('/v1')) {
+                // 如 https://api.siliconflow.cn/v1 -> 补全 /chat/completions
+                return url + '/chat/completions';
+            } else if (url.match(/\/v\d+$/)) {
+                // 如 https://api.xxx.com/v2 -> 补全 /chat/completions
+                return url + '/chat/completions';
+            } else if (!url.includes('/v1') && !url.match(/\/v\d+/)) {
+                // 如 https://api.siliconflow.cn -> 补全 /v1/chat/completions
+                return url + '/v1/chat/completions';
+            }
+            
+            return url;
+        };
+
+        // 检查 URL 是否需要补全
+        const needsUrlCompletion = (url) => {
+            if (!url) return false;
+            url = url.trim().replace(/\/+$/, '');
+            return !url.endsWith('/chat/completions');
+        };
+
+        // 更新 URL 预览
+        const updateUrlPreview = () => {
+            const urlInput = document.getElementById('api-url');
+            const previewContainer = document.getElementById('api-url-preview');
+            const previewText = document.getElementById('api-url-preview-text');
+            const hintText = document.getElementById('api-url-hint');
+            
+            const inputUrl = urlInput.value.trim();
+            
+            if (inputUrl && needsUrlCompletion(inputUrl)) {
+                const normalizedUrl = normalizeApiUrl(inputUrl);
+                previewText.textContent = normalizedUrl;
+                previewContainer.style.display = 'block';
+                hintText.style.display = 'none';
+            } else {
+                previewContainer.style.display = 'none';
+                hintText.style.display = 'block';
+            }
+        };
+
+        // 绑定输入事件实时预览
+        document.getElementById('api-url').oninput = updateUrlPreview;
+        
+        // 初始化时检查是否需要显示预览
+        updateUrlPreview();
+
         document.getElementById('save-api-settings').onclick = async () => {
             editingPreset.name = document.getElementById('preset-name').value.trim();
-            editingPreset.apiUrl = document.getElementById('api-url').value.trim();
+            // 保存时自动补全 URL
+            const rawUrl = document.getElementById('api-url').value.trim();
+            editingPreset.apiUrl = normalizeApiUrl(rawUrl);
             editingPreset.apiKey = document.getElementById('api-key').value.trim();
             editingPreset.model = document.getElementById('api-model').value.trim();
             editingPreset.replyDelay = parseInt(document.getElementById('reply-delay').value) || 0;
@@ -387,10 +452,10 @@ async function renderApiSettings() {
         };
 
         document.getElementById('fetch-models-btn').onclick = async () => {
-            const apiUrl = document.getElementById('api-url').value.trim();
+            const rawApiUrl = document.getElementById('api-url').value.trim();
             const apiKey = document.getElementById('api-key').value.trim();
             
-            if (!apiUrl || !apiKey) {
+            if (!rawApiUrl || !apiKey) {
                 return showToast('请先填写 API URL 和 API Key');
             }
 
@@ -401,9 +466,14 @@ async function renderApiSettings() {
                 btn.disabled = true;
                 btn.textContent = '拉取中...';
                 
-                let modelsUrl = apiUrl.replace(/\/chat\/completions$/, '/models');
-                if (modelsUrl === apiUrl) {
-                    const urlObj = new URL(apiUrl);
+                // 先标准化 URL，确保短 URL 也能正确处理
+                const normalizedUrl = normalizeApiUrl(rawApiUrl);
+                
+                // 将 /chat/completions 替换为 /models
+                let modelsUrl = normalizedUrl.replace(/\/chat\/completions$/, '/models');
+                if (modelsUrl === normalizedUrl) {
+                    // 如果没有替换成功，尝试其他方式
+                    const urlObj = new URL(normalizedUrl);
                     urlObj.pathname = urlObj.pathname.split('/').slice(0, -1).join('/') + '/models';
                     modelsUrl = urlObj.toString();
                 }

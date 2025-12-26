@@ -25,19 +25,33 @@ export async function init(target, actions) {
     headerActions = actions;
     isManageMode = false;
     selectedSessions.clear();
-    // 初始化时加载表情包缓存
-    await loadEmojiCache();
+    // 移除全量加载表情包，改为按需加载
+    // await loadEmojiCache();
     renderMainSessionList();
 }
 
 /**
- * 加载表情包缓存
+ * 加载单一表情包到缓存
  */
-async function loadEmojiCache() {
-    const allEmojis = await db.getAll(STORES.EMOJIS);
-    emojiCache = {};
-    for (const emoji of allEmojis) {
-        emojiCache[emoji.id] = emoji;
+async function loadEmojiToCache(emojiId) {
+    if (!emojiCache) emojiCache = {};
+    if (emojiCache[emojiId]) return emojiCache[emojiId];
+    
+    try {
+        const emoji = await db.get(STORES.EMOJIS, emojiId);
+        if (emoji) {
+            // 如果是 Blob，转换为 URL 以便显示
+            if (emoji.imageData instanceof Blob) {
+                emoji.imageUrl = URL.createObjectURL(emoji.imageData);
+            } else {
+                emoji.imageUrl = emoji.imageData; // 兼容旧 Base64
+            }
+            emojiCache[emojiId] = emoji;
+        }
+        return emoji;
+    } catch(e) {
+        console.error('Failed to load emoji:', emojiId, e);
+        return null;
     }
 }
 
@@ -205,14 +219,25 @@ async function buildEmojiListForPrompt(contactId) {
 }
 
 /**
- * 根据表情ID获取表情图片数据
- * @param {string} emojiId - 表情ID
- * @returns {string|null} 表情图片的base64数据，如果不存在则返回null
+ * 根据表情ID获取表情图片URL (支持异步)
+ * 注意：由于渲染是同步的，对于未缓存的图片，首次可能会显示 loading 或占位符
  */
-function getEmojiImageById(emojiId) {
-    if (!emojiCache) return null;
-    const emoji = emojiCache[emojiId];
-    return emoji ? emoji.imageData : null;
+function getEmojiImageUrl(emojiId) {
+    if (emojiCache && emojiCache[emojiId]) {
+        return emojiCache[emojiId].imageUrl || emojiCache[emojiId].imageData;
+    }
+    // 触发异步加载，下次渲染时可用，这里返回 null 显示 loading
+    loadEmojiToCache(emojiId).then(emoji => {
+        if (emoji) {
+            // 找到所有需要显示该表情的元素并更新
+            const imgs = document.querySelectorAll(`img[data-emoji-id="${emojiId}"]`);
+            imgs.forEach(img => {
+                img.src = emoji.imageUrl || emoji.imageData;
+                img.classList.remove('emoji-loading');
+            });
+        }
+    });
+    return null;
 }
 
 function toggleManageMode(enable) {
@@ -227,8 +252,10 @@ function toggleManageMode(enable) {
  * 一级菜单：全局会话列表
  */
 async function renderMainSessionList() {
-    const sessions = await db.getAll(STORES.SESSIONS);
-    const contacts = await db.getAll(STORES.CONTACTS);
+    // 限制加载数量，避免卡顿。更完善的方案是实现滚动加载或虚拟列表
+    const SESSION_LIMIT = 50;
+    const sessions = await db.getAll(STORES.SESSIONS, SESSION_LIMIT);
+    const contacts = await db.getAll(STORES.CONTACTS); // 联系人通常不会太多，暂不分页
     const contactMap = Object.fromEntries(contacts.map(c => [c.id, c]));
 
     if (isManageMode) {
@@ -239,12 +266,10 @@ async function renderMainSessionList() {
         window.lnChat.appTitle.textContent = '聊天';
         headerActions.innerHTML = `
             <button id="manage-btn" style="margin-right:10px; font-size:14px; background:none; border:none; color:white;">管理</button>
-            <button id="add-chat-btn" style="margin-right:10px;">➕</button>
-            <button id="add-group-btn">👥</button>
+            <button id="new-chat-btn" style="font-size:14px; background:none; border:none; color:white;">新建聊天</button>
         `;
         document.getElementById('manage-btn').onclick = () => toggleManageMode(true);
-        document.getElementById('add-chat-btn').onclick = () => showContactSelector();
-        document.getElementById('add-group-btn').onclick = () => showGroupContactSelector();
+        document.getElementById('new-chat-btn').onclick = () => showCreateChatOptions();
     }
 
     if (sessions.length === 0) {
@@ -253,13 +278,11 @@ async function renderMainSessionList() {
                 <div class="empty-icon">💬</div>
                 <p>暂无聊天会话</p>
                 <div style="display: flex; gap: 10px;">
-                    <button id="start-chat-btn">发起新聊天</button>
-                    <button id="start-group-btn">发起群聊</button>
+                    <button id="start-new-chat-btn">新建聊天</button>
                 </div>
             </div>
         `;
-        document.getElementById('start-chat-btn').onclick = () => showContactSelector();
-        document.getElementById('start-group-btn').onclick = () => showGroupContactSelector();
+        document.getElementById('start-new-chat-btn').onclick = () => showCreateChatOptions();
         return;
     }
 
@@ -368,6 +391,68 @@ async function renderMainSessionList() {
             }
         };
     }
+}
+
+/**
+ * 显示新建聊天选项对话框
+ */
+function showCreateChatOptions() {
+    // 移除已存在的对话框
+    const existingDialog = document.getElementById('create-chat-dialog');
+    if (existingDialog) {
+        document.body.removeChild(existingDialog);
+    }
+
+    const dialog = document.createElement('div');
+    dialog.id = 'create-chat-dialog';
+    dialog.className = 'confirm-dialog visible';
+    dialog.innerHTML = `
+        <div class="confirm-dialog-content" style="width: 320px; padding: 20px;">
+            <div class="confirm-dialog-header" style="text-align: center; margin-bottom: 20px;">新建聊天</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div id="create-private-chat-btn" class="create-chat-option">
+                    <div class="create-chat-icon" style="background: rgba(33, 150, 243, 0.2);">👤</div>
+                    <div class="create-chat-info">
+                        <h4>新建私聊</h4>
+                        <p>与单个角色进行对话</p>
+                    </div>
+                </div>
+                <div id="create-group-chat-btn" class="create-chat-option">
+                    <div class="create-chat-icon" style="background: rgba(156, 39, 176, 0.2);">👥</div>
+                    <div class="create-chat-info">
+                        <h4>新建群聊</h4>
+                        <p>邀请多个角色加入群组</p>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button id="create-chat-cancel" style="background: transparent; border: none; color: rgba(255, 255, 255, 0.6); font-size: 14px; cursor: pointer; padding: 10px;">取消</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    // 点击背景关闭
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            document.body.removeChild(dialog);
+        }
+    });
+
+    document.getElementById('create-chat-cancel').onclick = () => {
+        document.body.removeChild(dialog);
+    };
+
+    document.getElementById('create-private-chat-btn').onclick = () => {
+        document.body.removeChild(dialog);
+        showContactSelector();
+    };
+
+    document.getElementById('create-group-chat-btn').onclick = () => {
+        document.body.removeChild(dialog);
+        showGroupContactSelector();
+    };
 }
 
 /**
@@ -674,7 +759,9 @@ async function renderMessagesInManageMode() {
     const messagesDiv = document.getElementById('chat-messages');
     if (!messagesDiv) return;
     
-    const history = await db.getChatHistory(currentChatId);
+    // 分页加载逻辑 - 首次加载最新的 20 条
+    const PAGE_SIZE = 20;
+    const history = await db.getChatHistory(currentChatId, PAGE_SIZE);
     const session = await db.get(STORES.SESSIONS, currentChatId);
     const isGroup = session && session.type === 'group';
     
@@ -829,19 +916,12 @@ async function renderMessagesInManageMode() {
             contentHtml = `<img src="${msg.content}" style="max-width: 100%; border-radius: 10px;">`;
         } else if (msg.type === 'emoji') {
             // 表情包消息：根据ID获取图片显示
-            const emojiImage = getEmojiImageById(msg.content);
-            if (emojiImage) {
-                contentHtml = `<img src="${emojiImage}" class="emoji-message-img" style="max-width: 120px; max-height: 120px; border-radius: 10px;">`;
+            const emojiUrl = getEmojiImageUrl(msg.content);
+            if (emojiUrl) {
+                contentHtml = `<img src="${emojiUrl}" data-emoji-id="${msg.content}" class="emoji-message-img" style="max-width: 120px; max-height: 120px; border-radius: 10px;">`;
             } else {
-                // 表情包不存在，标记为需要删除
-                if (msg.id && msg.sender === 'assistant') {
-                    // 异步删除无效的表情包消息
-                    db.delete(STORES.CHAT_HISTORY, msg.id).then(() => {
-                        console.log(`已删除无效表情包消息: ${msg.content}`);
-                    });
-                }
-                // 跳过渲染这条消息
-                return '';
+                // 显示占位符，图片加载完成后会自动更新
+                contentHtml = `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12'%3E⌛%3C/text%3E%3C/svg%3E" data-emoji-id="${msg.content}" class="emoji-message-img emoji-loading" style="max-width: 120px; max-height: 120px; border-radius: 10px; opacity: 0.5;">`;
             }
         } else if (msg.type === 'location') {
             // 位置消息：显示位置信息（模仿转账样式）
@@ -1037,6 +1117,43 @@ async function renderMessagesInManageMode() {
     
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     
+    // 添加"加载更多"观察器 (Infinite Scroll)
+    if (history.length >= PAGE_SIZE) {
+        // 创建一个观察哨兵元素
+        const sentinel = document.createElement('div');
+        sentinel.className = 'message-sentinel';
+        sentinel.style.cssText = 'height: 20px; text-align: center; color: transparent;';
+        sentinel.textContent = 'loading...';
+        messagesDiv.insertBefore(sentinel, messagesDiv.firstChild);
+
+        // 使用 IntersectionObserver 监听哨兵
+        const observer = new IntersectionObserver(async (entries) => {
+            if (entries[0].isIntersecting) {
+                // 停止观察，防止重复触发
+                observer.unobserve(sentinel);
+                
+                // 显示加载提示
+                sentinel.textContent = '正在加载更多消息...';
+                sentinel.style.color = '#888';
+                sentinel.style.fontSize = '12px';
+                
+                const oldestMsgId = history[0] ? history[0].id : null;
+                if (oldestMsgId) {
+                    await loadMoreMessages(currentChatId, oldestMsgId, isGroup);
+                }
+                
+                // 移除哨兵 (新的消息加载后，如果有更多，loadMoreMessages 会再次添加哨兵)
+                sentinel.remove();
+            }
+        }, {
+            root: messagesDiv,
+            threshold: 0.1, // 稍微露头就触发
+            rootMargin: '50px 0px 0px 0px' // 提前50px触发预加载
+        });
+        
+        observer.observe(sentinel);
+    }
+
     // 绑定事件 - 使用 filteredHistory 代替 expandedHistory
     messagesDiv.querySelectorAll('.message').forEach(el => {
         if (el.classList.contains('system')) {
@@ -1138,6 +1255,107 @@ async function renderMessagesInManageMode() {
                 renderMessagesInManageMode();
             }
         };
+    }
+}
+
+/**
+ * 加载更多历史消息并插入到顶部
+ */
+async function loadMoreMessages(chatId, beforeId, isGroup) {
+    const PAGE_SIZE = 20;
+    const history = await db.getChatHistory(chatId, PAGE_SIZE, beforeId);
+    
+    if (history.length === 0) {
+        // showToast('没有更多消息了');
+        return;
+    }
+
+    const messagesDiv = document.getElementById('chat-messages');
+    if (!messagesDiv) return;
+
+    // 记录当前的滚动高度，以便加载后保持位置
+    const oldScrollHeight = messagesDiv.scrollHeight;
+    const oldScrollTop = messagesDiv.scrollTop;
+
+    // 生成HTML (复用 renderMessagesInManageMode 的大部分逻辑，这里简单处理文本和常见类型)
+    // 为了避免重复大量代码，最好重构 renderMessageItem。
+    // 这里暂时简化处理，确保能显示核心内容。
+    // 注意：这里的渲染逻辑应该与 renderMessagesInManageMode 保持一致。
+    
+    const contactIds = isGroup ? (await db.get(STORES.SESSIONS, chatId)).contactIds : [];
+    const contacts = isGroup ? await Promise.all(contactIds.map(id => db.get(STORES.CONTACTS, id))) : [];
+    const contactMap = {};
+    contacts.forEach(c => { if(c) contactMap[c.id] = c; });
+
+    // history 是按时间倒序拿回来的（getChatHistory内部做了reverse变成了时间正序），所以直接遍历即可
+    const newMessagesHtml = history.map(msg => {
+        let contentHtml = '';
+        if (msg.type === 'text' || msg.type === 'action' || msg.type === 'thought' || msg.type === 'state') {
+            contentHtml = simpleMarkdown(msg.content);
+        } else if (msg.type === 'emoji') {
+            const emojiUrl = getEmojiImageUrl(msg.content);
+            contentHtml = emojiUrl
+                ? `<img src="${emojiUrl}" class="emoji-message-img" style="max-width: 120px; border-radius: 10px;">`
+                : '[表情包加载中]';
+        } else {
+            contentHtml = `[${msg.type}]`;
+        }
+        
+        let timeDisplay = formatTime(msg.timestamp);
+        
+        // 简化的渲染模板
+        return `
+            <div class="message ${msg.sender} ${msg.type}" data-real-id="${msg.id}">
+                ${isGroup && msg.sender === 'assistant' ? `<div class="message-avatar">${contactMap[msg.contactId]?.avatar ? `<img src="${contactMap[msg.contactId].avatar}">` : '👤'}</div>` : ''}
+                <div class="message-content-wrapper">
+                    ${isGroup && msg.sender === 'assistant' ? `<div class="message-sender-name">${contactMap[msg.contactId]?.name || ''}</div>` : ''}
+                    <div class="msg-content">${contentHtml}</div>
+                    <div class="msg-time">${timeDisplay}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // 创建临时容器解析 HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = newMessagesHtml;
+    
+    // 将新消息插入到最前面 (除了哨兵元素)
+    const firstMessage = messagesDiv.querySelector('.message');
+    while (tempDiv.firstChild) {
+        messagesDiv.insertBefore(tempDiv.firstChild, firstMessage);
+    }
+
+    // 恢复滚动位置
+    // 新的 scrollHeight - 旧的 scrollHeight = 插入内容的高度
+    // 我们需要把 scrollTop 设为这个高度，这样视觉上用户看到的内容不变
+    const newScrollHeight = messagesDiv.scrollHeight;
+    messagesDiv.scrollTop = newScrollHeight - oldScrollHeight;
+
+    // 如果还有更多消息，再次添加观察哨兵
+    if (history.length >= PAGE_SIZE) {
+        const sentinel = document.createElement('div');
+        sentinel.className = 'message-sentinel';
+        sentinel.style.cssText = 'height: 20px; text-align: center; color: transparent;';
+        sentinel.textContent = 'loading...';
+        messagesDiv.insertBefore(sentinel, messagesDiv.firstChild);
+
+        const observer = new IntersectionObserver(async (entries) => {
+            if (entries[0].isIntersecting) {
+                observer.unobserve(sentinel);
+                sentinel.textContent = '加载中...';
+                sentinel.style.color = '#888';
+                sentinel.style.fontSize = '12px';
+                
+                const oldestMsgId = history[0] ? history[0].id : null;
+                if (oldestMsgId) {
+                    await loadMoreMessages(chatId, oldestMsgId, isGroup);
+                }
+                sentinel.remove();
+            }
+        }, { root: messagesDiv, threshold: 0.1, rootMargin: '50px 0px 0px 0px' });
+        
+        observer.observe(sentinel);
     }
 }
 

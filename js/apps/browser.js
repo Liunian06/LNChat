@@ -18,22 +18,22 @@ let originalBackHandler = null;
 let currentView = 'home'; // 'home' | 'browser' | 'bookmarks' | 'history'
 let currentUrl = '';
 
-// 默认书签
+// 默认书签 - 优先使用移动版以获得更好的内嵌体验
 const DEFAULT_BOOKMARKS = [
-    { id: 'bm_1', name: '百度', url: 'https://www.baidu.com', icon: '🔍' },
-    { id: 'bm_2', name: '必应', url: 'https://www.bing.com', icon: '🌐' },
+    { id: 'bm_1', name: '百度', url: 'https://m.baidu.com', icon: '🔍' },
+    { id: 'bm_2', name: '必应', url: 'https://cn.bing.com', icon: '🌐' },
     { id: 'bm_3', name: '知乎', url: 'https://www.zhihu.com', icon: '💡' },
-    { id: 'bm_4', name: '哔哩哔哩', url: 'https://www.bilibili.com', icon: '📺' },
-    { id: 'bm_5', name: '微博', url: 'https://www.weibo.com', icon: '📝' },
+    { id: 'bm_4', name: '哔哩哔哩', url: 'https://m.bilibili.com', icon: '📺' },
+    { id: 'bm_5', name: '微博', url: 'https://m.weibo.cn', icon: '📝' },
     { id: 'bm_6', name: 'GitHub', url: 'https://github.com', icon: '💻' },
-    { id: 'bm_7', name: '淘宝', url: 'https://www.taobao.com', icon: '🛒' },
-    { id: 'bm_8', name: '京东', url: 'https://www.jd.com', icon: '📦' }
+    { id: 'bm_7', name: '淘宝', url: 'https://main.m.taobao.com', icon: '🛒' },
+    { id: 'bm_8', name: '京东', url: 'https://m.jd.com', icon: '📦' }
 ];
 
-// 搜索引擎
+// 搜索引擎 - 使用移动版搜索接口
 const SEARCH_ENGINES = {
-    baidu: { name: '百度', url: 'https://www.baidu.com/s?wd=' },
-    bing: { name: '必应', url: 'https://www.bing.com/search?q=' },
+    baidu: { name: '百度', url: 'https://m.baidu.com/s?word=' },
+    bing: { name: '必应', url: 'https://cn.bing.com/search?q=' },
     google: { name: '谷歌', url: 'https://www.google.com/search?q=' }
 };
 
@@ -302,7 +302,8 @@ async function navigateTo(url) {
             
             <!-- 网页内容 -->
             <div style="flex: 1; position: relative; background: white;">
-                <iframe id="browser-iframe" src="${url}" style="width: 100%; height: 100%; border: none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+                <!-- 移除 sandbox 限制，改用 allow 属性以支持更多功能，同时解决部分重定向问题 -->
+                <iframe id="browser-iframe" src="${url}" style="width: 100%; height: 100%; border: none;" allow="camera; microphone; fullscreen; geolocation"></iframe>
                 <div id="iframe-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
                     <div style="font-size: 36px; margin-bottom: 15px;">⏳</div>
                     <div style="color: #666;">加载中...</div>
@@ -333,20 +334,13 @@ async function navigateTo(url) {
         error.style.display = 'flex';
     };
     
-    // 5秒后如果还在加载，显示错误提示
+    // 8秒后如果还在加载，强制隐藏加载动画
+    // 注意：移除跨域检测逻辑，因为访问外部网站必然会触发跨域保护从而导致误报错误
     setTimeout(() => {
-        try {
-            // 尝试访问iframe内容，如果失败则说明跨域
-            const doc = iframe.contentDocument || iframe.contentWindow.document;
-            if (!doc || !doc.body || doc.body.innerHTML === '') {
-                loading.style.display = 'none';
-                error.style.display = 'flex';
-            }
-        } catch (e) {
+        if (loading.style.display !== 'none') {
             loading.style.display = 'none';
-            error.style.display = 'flex';
         }
-    }, 5000);
+    }, 8000);
     
     // 绑定按钮事件
     document.getElementById('refresh-btn').onclick = () => {
