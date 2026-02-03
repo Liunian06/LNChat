@@ -95,3 +95,15 @@ LNChat 是一个基于 Web 的移动端风格 AI 聊天应用，采用 PWA 技�
 
 4. **相同方式共享**：
    - 如果您基于本项目进行了修改或二次创作，您必须采用与本协议相同的 **CC BY-NC-SA 4.0** 协议来分发您的作品。
+
+## 二贩死妈
+- 涉事贩子已删帖，但是疑似未下架商品
+![37d2d7eff17968955f507db7262d6c7b](https://github.com/user-attachments/assets/9b10dbda-9172-48ea-93f2-876b4a51a789)
+![23fd945778fa96e8e08805e28a79a83c](https://github.com/user-attachments/assets/2adb2c0e-09d9-468f-bea9-9aba1350525c)
+![bc2abc4778f8ac47071a7f6673329979](https://github.com/user-attachments/assets/13f17888-10e8-4394-a9cb-43638a5057ba)
+![fb9bc698c376642d9ae3a0fcc13ad88e](https://github.com/user-attachments/assets/17c42dd8-f566-4c1f-a03a-4f248f72445b)
+![e75062454e5e88638f67d579653e5c3e](https://github.com/user-attachments/assets/c5671510-8e73-4bb7-b425-d6ce0e17a8b1)
+![b4243e4e92f3616fc23eb02fa78d3214](https://github.com/user-attachments/assets/c68e6e00-9520-438c-bc16-459f9cd059ae)
+![a8f7d0f763b1fde0fdd01572bb628613](https://github.com/user-attachments/assets/3acd100a-987a-4305-aada-7c5ae16b38a1)
+
+
